@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="el">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#1664d9" />
+    <title>BookEasy | Ραντεβού χωρίς κόπο</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+    <!--
+    <div class="app-shell">
+      <aside class="sidebar" id="sidebar">
+        <div class="brand-row">
+          <a class="brand" href="#" aria-label="BookEasy home"><span class="brand-mark">B</span><span>bookeasy</span></a>
+          <button class="icon-button mobile-close" id="closeSidebar" aria-label="Close menu"><i data-lucide="x"></i></button>
+        </div>
+        <div class="workspace-switcher">
+          <div class="workspace-avatar">A</div>
+          <div class="workspace-copy"><strong>Atelier North</strong><span>Personal workspace</span></div>
+          <i data-lucide="chevrons-up-down"></i>
+        </div>
+        <nav class="main-nav" aria-label="Main navigation">
+          <span class="nav-label">Workspace</span>
+          <a class="nav-item active" href="#overview" data-view="overview"><i data-lucide="layout-dashboard"></i><span>Overview</span></a>
+          <a class="nav-item" href="#calendar" data-view="calendar"><i data-lucide="calendar-days"></i><span>Calendar</span><b>4</b></a>
+          <a class="nav-item" href="#clients" data-view="clients"><i data-lucide="users-round"></i><span>Clients</span></a>
+          <a class="nav-item" href="#services" data-view="services"><i data-lucide="sparkles"></i><span>Services</span></a>
+          <span class="nav-label nav-label-spaced">Manage</span>
+          <a class="nav-item" href="#availability" data-view="availability"><i data-lucide="clock-3"></i><span>Availability</span></a>
+          <a class="nav-item" href="#payments" data-view="payments"><i data-lucide="credit-card"></i><span>Payments</span></a>
+        </nav>
+        <div class="sidebar-bottom">
+          <div class="upgrade-card"><div class="upgrade-icon"><i data-lucide="zap"></i></div><strong>Grow your practice</strong><p>Unlock automated reminders and more.</p><button class="text-button">Explore Pro <i data-lucide="arrow-up-right"></i></button></div>
+          <a class="nav-item" href="#settings" data-view="settings"><i data-lucide="settings-2"></i><span>Settings</span></a>
+          <div class="profile-row"><div class="profile-avatar">JM</div><div class="profile-copy"><strong>Jordan Miller</strong><span>Admin</span></div><i data-lucide="more-horizontal"></i></div>
+        </div>
+      </aside>
+
+      <main class="main-content">
+        <header class="topbar">
+          <div class="topbar-left"><button class="icon-button menu-button" id="openSidebar" aria-label="Open menu"><i data-lucide="menu"></i></button><div class="breadcrumb"><span>Workspace</span><i data-lucide="chevron-right"></i><strong id="pageTitle">Overview</strong></div></div>
+          <div class="topbar-actions"><button class="icon-button" aria-label="Help"><i data-lucide="circle-help"></i></button><button class="icon-button notification-button" aria-label="Notifications"><i data-lucide="bell"></i><span></span></button><div class="topbar-avatar">JM</div></div>
+        </header>
+
+        <div class="page-wrap" id="pageWrap">
+          <section class="page-heading"><div><p class="eyebrow" id="dateGreeting">MONDAY, OCTOBER 14, 2024</p><h1>Good morning, Jordan <span>✦</span></h1><p class="heading-subtitle">Here’s what’s happening with your practice today.</p></div><button class="primary-button" id="newBooking"><i data-lucide="plus"></i> New booking</button></section>
+
+          <section class="stats-grid" aria-label="Practice summary">
+            <article class="stat-card"><div class="stat-top"><span class="stat-label">Today’s bookings</span><span class="stat-icon coral"><i data-lucide="calendar-check-2"></i></span></div><div class="stat-value">12</div><div class="stat-foot"><span class="positive"><i data-lucide="trending-up"></i> 18%</span><span>vs. last Monday</span></div></article>
+            <article class="stat-card"><div class="stat-top"><span class="stat-label">Upcoming revenue</span><span class="stat-icon yellow"><i data-lucide="banknote"></i></span></div><div class="stat-value">$1,840</div><div class="stat-foot"><span class="positive"><i data-lucide="trending-up"></i> 12%</span><span>vs. last week</span></div></article>
+            <article class="stat-card"><div class="stat-top"><span class="stat-label">New clients</span><span class="stat-icon mint"><i data-lucide="user-round-plus"></i></span></div><div class="stat-value">8</div><div class="stat-foot"><span class="positive"><i data-lucide="trending-up"></i> 24%</span><span>this month</span></div></article>
+            <article class="stat-card"><div class="stat-top"><span class="stat-label">Utilization rate</span><span class="stat-icon lilac"><i data-lucide="gauge"></i></span></div><div class="stat-value">78%</div><div class="stat-foot"><span class="neutral">+4%</span><span>vs. last month</span></div></article>
+          </section>
+
+          <section class="dashboard-grid">
+            <article class="panel schedule-panel"><div class="panel-header"><div><h2>Today’s schedule</h2><p>Monday, October 14</p></div><button class="ghost-button" id="viewCalendar">View calendar <i data-lucide="arrow-up-right"></i></button></div><div class="schedule-list" id="scheduleList">
+              <div class="appointment now"><div class="time-col"><strong>09:00</strong><span>AM</span></div><div class="timeline-dot"></div><div class="appointment-body"><div class="appointment-main"><div class="client-avatar avatar-pink">AS</div><div><strong>Alexandra Stone</strong><span>Brand strategy session</span></div></div><div class="appointment-meta"><span class="status-pill confirmed"><i data-lucide="check"></i> Confirmed</span><button class="more-button" aria-label="More options"><i data-lucide="more-horizontal"></i></button></div></div></div>
+              <div class="schedule-line"></div>
+              <div class="appointment"><div class="time-col"><strong>10:30</strong><span>AM</span></div><div class="timeline-dot"></div><div class="appointment-body"><div class="appointment-main"><div class="client-avatar avatar-blue">MC</div><div><strong>Marcus Chen</strong><span>Creative direction review</span></div></div><div class="appointment-meta"><span class="status-pill confirmed"><i data-lucide="check"></i> Confirmed</span><button class="more-button" aria-label="More options"><i data-lucide="more-horizontal"></i></button></div></div></div>
+              <div class="schedule-line"></div>
+              <div class="appointment"><div class="time-col"><strong>01:00</strong><span>PM</span></div><div class="timeline-dot"></div><div class="appointment-body"><div class="appointment-main"><div class="client-avatar avatar-yellow">RP</div><div><strong>Riley Park</strong><span>Discovery call · 45 min</span></div></div><div class="appointment-meta"><span class="status-pill pending"><i data-lucide="clock-3"></i> Pending</span><button class="more-button" aria-label="More options"><i data-lucide="more-horizontal"></i></button></div></div></div>
+              <div class="schedule-line"></div>
+              <div class="appointment"><div class="time-col"><strong>03:30</strong><span>PM</span></div><div class="timeline-dot"></div><div class="appointment-body"><div class="appointment-main"><div class="client-avatar avatar-green">TW</div><div><strong>Taylor Woods</strong><span>Monthly coaching check-in</span></div></div><div class="appointment-meta"><span class="status-pill confirmed"><i data-lucide="check"></i> Confirmed</span><button class="more-button" aria-label="More options"><i data-lucide="more-horizontal"></i></button></div></div></div>
+            </div><button class="load-more" id="loadMore">Show 2 more appointments <i data-lucide="chevron-down"></i></button></article>
+
+            <article class="panel availability-panel"><div class="panel-header"><div><h2>Availability</h2><p>Keep your week in rhythm.</p></div><button class="icon-button"><i data-lucide="settings-2"></i></button></div><div class="availability-status"><div class="status-ring"><i data-lucide="check"></i></div><div><strong>You’re available</strong><span>Accepting new bookings</span></div><button class="toggle active" id="availabilityToggle" aria-label="Toggle availability"><span></span></button></div><div class="week-list"><div><span>Mon</span><strong>09:00 – 17:00</strong><b>Today</b></div><div><span>Tue</span><strong>09:00 – 17:00</strong></div><div><span>Wed</span><strong>09:00 – 17:00</strong></div><div><span>Thu</span><strong>10:00 – 18:00</strong></div><div><span>Fri</span><strong>09:00 – 15:00</strong></div></div><button class="outline-button" id="editHours">Edit hours <i data-lucide="arrow-right"></i></button></article>
+          </section>
+
+          <section class="bottom-grid"><article class="panel activity-panel"><div class="panel-header"><div><h2>Recent activity</h2><p>Latest updates from your workspace.</p></div><button class="ghost-button">See all <i data-lucide="arrow-up-right"></i></button></div><div class="activity-list"><div class="activity-item"><div class="activity-icon coral-bg"><i data-lucide="user-plus"></i></div><div><strong>New client added</strong><span>Samira Patel was added to your clients</span></div><time>10 min ago</time></div><div class="activity-item"><div class="activity-icon mint-bg"><i data-lucide="calendar-plus"></i></div><div><strong>Booking confirmed</strong><span>Alexandra Stone confirmed her session</span></div><time>42 min ago</time></div><div class="activity-item"><div class="activity-icon yellow-bg"><i data-lucide="credit-card"></i></div><div><strong>Payment received</strong><span>$150 payment from Marcus Chen</span></div><time>2 hr ago</time></div></div></article><article class="panel link-panel"><div class="link-art"><div class="link-orbit orbit-one"></div><div class="link-orbit orbit-two"></div><div class="link-center"><i data-lucide="link-2"></i></div></div><div><span class="eyebrow">YOUR BOOKING PAGE</span><h2>Ready to share your link?</h2><p>Make it effortless for clients to find a time that works.</p><div class="booking-link"><span>bookeasy.co/atelier-north</span><button id="copyLink" aria-label="Copy booking link"><i data-lucide="copy"></i></button></div><small class="copy-feedback" id="copyFeedback">Link copied to clipboard</small></div></article></section>
+        </div>
+      </main>
+    </div>
+
+    <div class="modal-backdrop" id="bookingModal" aria-hidden="true"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle"><div class="modal-header"><div><span class="eyebrow">NEW APPOINTMENT</span><h2 id="modalTitle">Create a booking</h2></div><button class="icon-button" id="closeModal" aria-label="Close dialog"><i data-lucide="x"></i></button></div><form id="bookingForm"><label>Client name<input name="client" required placeholder="e.g. Jamie Lee" /></label><label>Service<select name="service"><option>Brand strategy session</option><option>Creative direction review</option><option>Discovery call · 45 min</option><option>Monthly coaching check-in</option></select></label><div class="form-row"><label>Date<input name="date" type="date" value="2024-10-14" required /></label><label>Time<input name="time" type="time" value="09:00" required /></label></div><label>Notes <span class="optional">Optional</span><textarea name="notes" rows="3" placeholder="Anything you want to remember..."></textarea></label><div class="modal-footer"><button type="button" class="ghost-button" id="cancelModal">Cancel</button><button type="submit" class="primary-button">Create booking <i data-lucide="arrow-right"></i></button></div></form></div></div>
+    <div class="toast" id="toast"><i data-lucide="check-circle-2"></i><span>Booking created successfully</span></div>
+    <script src="https://unpkg.com/lucide@latest"></script><script src="app.js"></script>-->
+  </body>
+</html>
