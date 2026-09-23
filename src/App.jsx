@@ -49,10 +49,76 @@ const dayNames = [
   "Παρασκευή",
   "Σάββατο",
 ];
+const subscriptionPlans = {
+  basic: {
+    label: "Basic",
+    price: "€9,99 / μήνα",
+    features: [
+      "Προσωπική δημόσια booking σελίδα",
+      "Μοναδικό booking link",
+      "Υπηρεσίες και τιμές",
+      "Staff",
+      "Ωράριο λειτουργίας",
+      "Online κρατήσεις",
+      "Dashboard",
+      "Διαχείριση ραντεβού και πελατών",
+    ],
+  },
+  plus: {
+    label: "Plus",
+    price: "€14,99 / μήνα",
+    features: [
+      "Όλα τα Basic",
+      "Εμφάνιση στην αναζήτηση του BookEasy",
+      "Κατηγορία επιχείρησης",
+      "Πόλη / περιοχή",
+      "Εμφάνιση στα αποτελέσματα αναζήτησης πελατών",
+    ],
+  },
+};
+const scheduleDayOrder = [1, 2, 3, 4, 5, 6, 0];
+const scheduleDayLabels = {
+  0: "Κυριακή",
+  1: "Δευτέρα",
+  2: "Τρίτη",
+  3: "Τετάρτη",
+  4: "Πέμπτη",
+  5: "Παρασκευή",
+  6: "Σάββατο",
+};
+const buildWeeklyHours = (items = []) => {
+  const map = new Map(
+    (items || []).map((item) => [Number(item.day_of_week), item]),
+  );
+  return scheduleDayOrder.map((dayOfWeek) => {
+    const item = map.get(dayOfWeek) || {};
+    return {
+      id: item.id || null,
+      day_of_week: dayOfWeek,
+      name: scheduleDayLabels[dayOfWeek],
+      start_time: item.start_time || "09:00",
+      end_time: item.end_time || "17:00",
+      is_closed: Boolean(item.is_closed),
+    };
+  });
+};
+const formatTimeInputValue = (value) => {
+  if (typeof value === "string" && value.length >= 5) return value.slice(0, 5);
+  if (typeof value === "string" && value.length === 0) return "09:00";
+  return value || "09:00";
+};
 const errorText = (error) =>
   error?.code === "23P01"
     ? "Η ώρα έχει ήδη κρατηθεί. Επιλέξτε άλλη διαθέσιμη ώρα."
     : error?.message || "Παρουσιάστηκε σφάλμα. Δοκιμάστε ξανά.";
+const supabaseErrorText = (error) =>
+  [
+    error?.message || "Παρουσιάστηκε σφάλμα στο Supabase.",
+    error?.code ? `code: ${error.code}` : "",
+    error?.details ? `details: ${error.details}` : "",
+  ]
+    .filter(Boolean)
+    .join(" | ");
 const slugify = (value) => {
   const greekMap = {
     ά: "a",
@@ -193,11 +259,16 @@ function CustomerAuthRedirect({ mode }) {
     const returnTo = new URLSearchParams(window.location.search).get(
       "returnTo",
     );
-    if (returnTo) sessionStorage.setItem("bookeasy-return-to", returnTo);
+    if (returnTo?.startsWith("/") && !returnTo.startsWith("//"))
+      sessionStorage.setItem("bookeasy-return-to", returnTo);
   }, []);
   useEffect(() => {
     const returnTo = sessionStorage.getItem("bookeasy-return-to");
-    if (auth.user && returnTo) {
+    if (
+      auth.user &&
+      returnTo?.startsWith("/") &&
+      !returnTo.startsWith("//")
+    ) {
       sessionStorage.removeItem("bookeasy-return-to");
       navigate(returnTo, { replace: true });
     }
@@ -278,16 +349,46 @@ function App() {
     </Routes>
   );
 }
+function useBusinessRoleHome(user) {
+  const [business, setBusiness] = useState(null);
+  useEffect(() => {
+    let active = true;
+    async function load() {
+      if (!user || !supabase) {
+        setBusiness(null);
+        return;
+      }
+      const { data } = await supabase
+        .from("businesses")
+        .select("id")
+        .eq("owner_id", user.id)
+        .maybeSingle();
+      if (active) setBusiness(data || null);
+    }
+    load();
+    return () => {
+      active = false;
+    };
+  }, [user]);
+  return user ? (business ? "/dashboard" : "/customer") : "/";
+}
+function RoleAwareHomeLink({ children, className = "", ...props }) {
+  return (
+    <Link className={className} to="/" {...props}>
+      {children}
+    </Link>
+  );
+}
 function HomePage() {
   return (
     <div className="auth-layout">
-      <div className="auth-aside">
-        <Link className="brand light" to="/">
+      <div className="auth-aside home-hero">
+        <RoleAwareHomeLink className="brand light">
           <span className="brand-mark">B</span>
           <span>
             book<span>easy</span>
           </span>
-        </Link>
+        </RoleAwareHomeLink>
         <div>
           <span className="eyebrow">BOOKEASY</span>
           <h1>Η Νο1 εφαρμογή κρατήσεων</h1>
@@ -316,12 +417,10 @@ function HomePage() {
 }
 function NavigateHome({ user }) {
   const navigate = useNavigate();
+  const target = useBusinessRoleHome(user);
   useEffect(
-    () =>
-      navigate(user ? "/dashboard" : "/login", {
-        replace: true,
-      }),
-    [navigate, user],
+    () => navigate(user ? target : "/login", { replace: true }),
+    [navigate, target, user],
   );
   return null;
 }
@@ -373,12 +472,12 @@ function Dashboard({
     <div className="app-shell">
       <aside className={`sidebar ${sidebarOpen ? "open" : ""}`}>
         <div className="sidebar-top">
-          <Link className="brand" to="/dashboard">
+          <RoleAwareHomeLink className="brand">
             <span className="brand-mark">B</span>
             <span>
               book<span>easy</span>
             </span>
-          </Link>
+          </RoleAwareHomeLink>
           <button
             className="icon-button mobile-only"
             onClick={() => setSidebarOpen(false)}
@@ -633,17 +732,21 @@ function Overview({ appointments, business, hours }) {
           <div className="hours-list">
             {hours.data
               .filter((day) => !day.staff_id)
-              .slice(0, 5)
+              .sort(
+                (a, b) =>
+                  scheduleDayOrder.indexOf(Number(a.day_of_week)) -
+                  scheduleDayOrder.indexOf(Number(b.day_of_week)),
+              )
               .map((day) => (
-              <div key={day.name}>
-                <span>{dayNames[day.day_of_week]}</span>
-                <strong>
-                  {day.is_closed
-                    ? "Κλειστά"
-                    : `${day.start_time} – ${day.end_time}`}
-                </strong>
-              </div>
-            ))}
+                <div key={day.day_of_week ?? day.id}>
+                  <span>{scheduleDayLabels[Number(day.day_of_week)]}</span>
+                  <strong>
+                    {day.is_closed
+                      ? "Κλειστά"
+                      : `${day.start_time} – ${day.end_time}`}
+                  </strong>
+                </div>
+              ))}
           </div>
           <Link to="/dashboard/settings" className="outline-button">
             Επεξεργασία ωραρίου <ChevronRight size={15} />
@@ -768,26 +871,36 @@ function Calendar({ appointments }) {
   );
 }
 function Appointments({ appointments }) {
+  const [selected, setSelected] = useState(null);
+
   const update = async (id, status) => {
-    if (supabase) {
-      const { error } = await supabase
-        .from("appointments")
-        .update({ status })
-        .eq("id", id);
-      if (error) alert(errorText(error));
-      else appointments.reload();
+    if (!supabase) return;
+    const { error } = await supabase
+      .from("appointments")
+      .update({ status })
+      .eq("id", id);
+    if (error) alert(errorText(error));
+    else {
+      setSelected((current) =>
+        current && current.id === id ? { ...current, status } : current,
+      );
+      appointments.reload();
     }
   };
-  const remove = async (id) => {
-    if (supabase) {
-      const { error } = await supabase
-        .from("appointments")
-        .delete()
-        .eq("id", id);
-      if (error) alert(errorText(error));
-      else appointments.reload();
-    }
+
+  const getStatusLabel = (status) => {
+    const labels = {
+      booked: "Κρατημένο",
+      pending: "Σε αναμονή",
+      confirmed: "Επιβεβαιωμένο",
+      cancelled: "Ακυρωμένο",
+      completed: "Ολοκληρωμένο",
+    };
+    return labels[status] || status;
   };
+
+  const getCustomerInitials = (name) => (name || "Πελάτης").slice(0, 2);
+
   return (
     <>
       <PageHeader
@@ -800,9 +913,13 @@ function Appointments({ appointments }) {
           <thead>
             <tr>
               <th>ΠΕΛΑΤΗΣ</th>
+              <th>ΤΗΛΕΦΩΝΟ</th>
+              <th>EMAIL</th>
               <th>ΥΠΗΡΕΣΙΑ</th>
-              <th>ΗΜΕΡΟΜΗΝΙΑ</th>
               <th>ΠΡΟΣΩΠΙΚΟ</th>
+              <th>ΗΜΕΡΟΜΗΝΙΑ</th>
+              <th>ΕΝΑΡΞΗ</th>
+              <th>ΛΗΞΗ</th>
               <th>ΚΑΤΑΣΤΑΣΗ</th>
               <th>ΕΝΕΡΓΕΙΕΣ</th>
             </tr>
@@ -810,7 +927,7 @@ function Appointments({ appointments }) {
           <tbody>
             {appointments.loading ? (
               <tr>
-                <td colSpan="6">
+                <td colSpan="10">
                   <Loading />
                 </td>
               </tr>
@@ -819,26 +936,45 @@ function Appointments({ appointments }) {
                 <tr key={item.id}>
                   <td>
                     <div className="table-person">
-                      <div className="avatar pink">
-                        {(item.customer_name || "").slice(0, 2)}
-                      </div>
-                      <strong>{item.customer_name}</strong>
+                      <div className="avatar pink">{getCustomerInitials(item.customer_name)}</div>
+                      <strong>{item.customer_name || "—"}</strong>
                     </div>
                   </td>
+                  <td>{item.customer_phone || "—"}</td>
+                  <td>{item.customer_email || "—"}</td>
                   <td>{item.service?.name || "Υπηρεσία"}</td>
-                  <td>
-                    {new Date(item.starts_at).toLocaleString("el-GR", {
-                      dateStyle: "short",
-                      timeStyle: "short",
-                    })}
-                  </td>
                   <td>{item.staff?.name || "—"}</td>
                   <td>
+                    {new Date(item.starts_at).toLocaleDateString("el-GR", {
+                      day: "2-digit",
+                      month: "2-digit",
+                      year: "numeric",
+                    })}
+                  </td>
+                  <td>
+                    {new Date(item.starts_at).toLocaleTimeString("el-GR", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </td>
+                  <td>
+                    {new Date(item.ends_at).toLocaleTimeString("el-GR", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </td>
+                  <td>
                     <span className={`status ${item.status}`}>
-                      {item.status}
+                      {getStatusLabel(item.status)}
                     </span>
                   </td>
                   <td>
+                    <button
+                      className="mini-action"
+                      onClick={() => setSelected(item)}
+                    >
+                      Λεπτομέρειες
+                    </button>
                     <button
                       className="mini-action"
                       onClick={() => update(item.id, "confirmed")}
@@ -853,7 +989,7 @@ function Appointments({ appointments }) {
                     </button>
                     <button
                       className="mini-action danger"
-                      onClick={() => remove(item.id)}
+                      onClick={() => update(item.id, "cancelled")}
                     >
                       <Trash2 size={14} />
                     </button>
@@ -864,6 +1000,102 @@ function Appointments({ appointments }) {
           </tbody>
         </table>
       </section>
+
+      {selected && (
+        <div className="modal-backdrop open" onClick={() => setSelected(null)}>
+          <div className="modal" onClick={(event) => event.stopPropagation()}>
+            <div className="modal-header">
+              <div>
+                <span className="eyebrow">ΚΡΑΤΗΣΗ</span>
+                <h2>Λεπτομέρειες κράτησης</h2>
+              </div>
+              <button className="icon-button" onClick={() => setSelected(null)}>
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="modal form-panel">
+              <div className="table-person">
+                <div className="avatar pink">{getCustomerInitials(selected.customer_name)}</div>
+                <div>
+                  <strong>{selected.customer_name || "—"}</strong>
+                  <small>{getStatusLabel(selected.status)}</small>
+                </div>
+              </div>
+
+              <div className="form-grid">
+                <label>
+                  Όνομα πελάτη
+                  <input value={selected.customer_name || ""} readOnly />
+                </label>
+                <label>
+                  Τηλέφωνο
+                  <input value={selected.customer_phone || ""} readOnly />
+                </label>
+                <label>
+                  Email
+                  <input value={selected.customer_email || ""} readOnly />
+                </label>
+                <label>
+                  Υπηρεσία
+                  <input value={selected.service?.name || "—"} readOnly />
+                </label>
+                <label>
+                  Μέλος προσωπικού
+                  <input value={selected.staff?.name || "—"} readOnly />
+                </label>
+                <label>
+                  Ημερομηνία
+                  <input
+                    value={new Date(selected.starts_at).toLocaleDateString("el-GR", {
+                      day: "2-digit",
+                      month: "2-digit",
+                      year: "numeric",
+                    })}
+                    readOnly
+                  />
+                </label>
+                <label>
+                  Ώρα έναρξης
+                  <input
+                    value={new Date(selected.starts_at).toLocaleTimeString("el-GR", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                    readOnly
+                  />
+                </label>
+                <label>
+                  Ώρα λήξης
+                  <input
+                    value={new Date(selected.ends_at).toLocaleTimeString("el-GR", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                    readOnly
+                  />
+                </label>
+                <label>
+                  Κατάσταση
+                  <input value={getStatusLabel(selected.status)} readOnly />
+                </label>
+              </div>
+
+              <div className="modal-footer">
+                <button className="outline-button" onClick={() => update(selected.id, "confirmed")}>
+                  Επιβεβαίωση
+                </button>
+                <button className="outline-button" onClick={() => update(selected.id, "cancelled")}>
+                  Ακύρωση
+                </button>
+                <button className="primary-button" onClick={() => update(selected.id, "completed")}>
+                  Ολοκληρώθηκε
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
@@ -1124,8 +1356,65 @@ function Staff({ business }) {
 function Profile({ business, setBusiness }) {
   const [form, setForm] = useState(business);
   const [message, setMessage] = useState("");
+  const [hoursMessage, setHoursMessage] = useState("");
+  const [upgradeLoading, setUpgradeLoading] = useState(false);
   const [hours, setHours] = useState([]);
   const [photos, setPhotos] = useState("");
+  const currentPlan = business?.subscription_plan || "basic";
+  const upgradePlan = async () => {
+    if (!supabase || !business?.id || upgradeLoading) return;
+    setUpgradeLoading(true);
+    setMessage("");
+    try {
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      if (authError || !authData.user) {
+        throw authError || new Error("Η συνεδρία σας έληξε.");
+      }
+
+      const { data: updatedBusiness, error: updateError } = await supabase
+        .from("businesses")
+        .update({ subscription_plan: "plus" })
+        .eq("id", business.id)
+        .eq("owner_id", authData.user.id)
+        .select("id, subscription_plan")
+        .single();
+      if (updateError) throw updateError;
+      if (updatedBusiness.subscription_plan !== "plus") {
+        const verificationError = new Error(
+          "Το UPDATE ολοκληρώθηκε χωρίς να αποθηκεύσει subscription_plan=plus.",
+        );
+        verificationError.code = "UPDATE_VERIFICATION_FAILED";
+        verificationError.details = `business_id: ${business.id}`;
+        throw verificationError;
+      }
+
+      const { data: refreshedBusiness, error: refreshError } = await supabase
+        .from("businesses")
+        .select("*")
+        .eq("id", business.id)
+        .eq("owner_id", authData.user.id)
+        .single();
+      if (refreshError || !refreshedBusiness) {
+        throw refreshError || new Error("Δεν φορτώθηκε το νέο πακέτο από τη βάση.");
+      }
+      if (refreshedBusiness.subscription_plan !== "plus") {
+        const verificationError = new Error(
+          "Το SELECT μετά το UPDATE επέστρεψε διαφορετικό subscription_plan.",
+        );
+        verificationError.code = "SELECT_VERIFICATION_FAILED";
+        verificationError.details = `business_id: ${business.id}`;
+        throw verificationError;
+      }
+
+      setBusiness(refreshedBusiness);
+      setForm(refreshedBusiness);
+      setMessage("Το πακέτο σας αναβαθμίστηκε σε Plus.");
+    } catch (error) {
+      setMessage(supabaseErrorText(error));
+    } finally {
+      setUpgradeLoading(false);
+    }
+  };
   useEffect(() => {
     Promise.all([
       supabase.from("working_hours").select("*").eq("business_id", business.id),
@@ -1136,16 +1425,40 @@ function Profile({ business, setBusiness }) {
         .order("sort_order"),
     ]).then(([hourResult, mediaResult]) => {
       if (hourResult.error) setMessage(errorText(hourResult.error));
-      setHours(
-        (hourResult.data || []).map((item) => ({
-          ...item,
-          name: dayNames[item.day_of_week],
-        })),
-      );
+      setHours(buildWeeklyHours(hourResult.data || []));
       if (mediaResult.error) setMessage(errorText(mediaResult.error));
       setPhotos((mediaResult.data || []).map((item) => item.url).join(", "));
     });
   }, [business.id]);
+  const saveWorkingHours = async () => {
+    const normalizedHours = buildWeeklyHours(hours);
+    const payload = normalizedHours.map(({ name, id, ...hour }) => ({
+      ...hour,
+      business_id: business.id,
+      staff_id: null,
+    }));
+    const { error: deleteHoursError } = await supabase
+      .from("working_hours")
+      .delete()
+      .eq("business_id", business.id)
+      .is("staff_id", null);
+    if (deleteHoursError) {
+      setHoursMessage(errorText(deleteHoursError));
+      return false;
+    }
+    if (payload.length) {
+      const { error: insertHoursError } = await supabase
+        .from("working_hours")
+        .insert(payload);
+      if (insertHoursError) {
+        setHoursMessage(errorText(insertHoursError));
+        return false;
+      }
+    }
+    setHours(normalizedHours);
+    setHoursMessage("Το ωράριο αποθηκεύτηκε.");
+    return true;
+  };
   const save = async (event) => {
     event.preventDefault();
     const { error } = await supabase
@@ -1155,6 +1468,8 @@ function Profile({ business, setBusiness }) {
         slug: form.slug,
         description: form.description,
         address: form.address,
+        city: form.city,
+        category: form.category,
         phone: form.phone,
         logo_url: form.logo_url,
         cover_image_url: form.cover_image_url,
@@ -1165,29 +1480,10 @@ function Profile({ business, setBusiness }) {
       setMessage(errorText(error));
       return;
     }
-    const { error: hoursError } = await supabase
-      .from("working_hours")
-      .delete()
-      .eq("business_id", business.id)
-      .is("staff_id", null);
+    const hoursError = await saveWorkingHours();
     if (hoursError) {
       setMessage(errorText(hoursError));
       return;
-    }
-    if (hours.length) {
-      const { error: insertHoursError } = await supabase
-        .from("working_hours")
-        .insert(
-          hours.map(({ name, id, ...hour }) => ({
-            ...hour,
-            business_id: business.id,
-            staff_id: null,
-          })),
-        );
-      if (insertHoursError) {
-        setMessage(errorText(insertHoursError));
-        return;
-      }
     }
     const { error: mediaDeleteError } = await supabase
       .from("business_media")
@@ -1228,7 +1524,10 @@ function Profile({ business, setBusiness }) {
         subtitle="Αυτές οι πληροφορίες εμφανίζονται στη δημόσια σελίδα σας."
       />
       <section className="panel form-panel">
-        <Notice message={message} success={message.includes("αποθηκεύτηκαν")} />
+        <Notice
+          message={message}
+          success={message.includes("αποθηκεύτηκαν") || message.includes("αναβαθμίστηκε")}
+        />
         <form onSubmit={save}>
           <div className="form-heading">
             <div className="business-logo">{business.name[0]}</div>
@@ -1288,6 +1587,20 @@ function Profile({ business, setBusiness }) {
               />
             </label>
             <label>
+              Πόλη / περιοχή
+              <input
+                value={form.city || ""}
+                onChange={(e) => setForm({ ...form, city: e.target.value })}
+              />
+            </label>
+            <label>
+              Κατηγορία
+              <input
+                value={form.category || ""}
+                onChange={(e) => setForm({ ...form, category: e.target.value })}
+              />
+            </label>
+            <label>
               URL logo
               <input
                 value={form.logo_url || ""}
@@ -1307,7 +1620,7 @@ function Profile({ business, setBusiness }) {
               Primary color
               <input
                 type="color"
-                value={form.primary_color || "#1664d9"}
+                value={form.primary_color || "#718A68"}
                 onChange={(e) =>
                   setForm({ ...form, primary_color: e.target.value })
                 }
@@ -1323,61 +1636,110 @@ function Profile({ business, setBusiness }) {
             </label>
           </div>
           <h2 className="section-title">Ωράριο λειτουργίας</h2>
+          <Notice message={hoursMessage} success={hoursMessage.includes("αποθηκεύτηκε")} />
           <div className="hours-editor">
             {hours.map((hour) => (
               <div key={hour.day_of_week}>
                 <strong>{hour.name}</strong>
-                <input
-                  type="time"
-                  disabled={hour.is_closed}
-                  value={hour.start_time}
-                  onChange={(e) =>
-                    setHours(
-                      hours.map((item) =>
-                        item.day_of_week === hour.day_of_week
-                          ? { ...item, start_time: e.target.value }
-                          : item,
-                      ),
-                    )
-                  }
-                />
-                <span>–</span>
-                <input
-                  type="time"
-                  disabled={hour.is_closed}
-                  value={hour.end_time}
-                  onChange={(e) =>
-                    setHours(
-                      hours.map((item) =>
-                        item.day_of_week === hour.day_of_week
-                          ? { ...item, end_time: e.target.value }
-                          : item,
-                      ),
-                    )
-                  }
-                />
                 <label className="check-label">
                   <input
                     type="checkbox"
-                    checked={hour.is_closed}
+                    checked={!hour.is_closed}
                     onChange={(e) =>
                       setHours(
                         hours.map((item) =>
                           item.day_of_week === hour.day_of_week
-                            ? { ...item, is_closed: e.target.checked }
+                            ? { ...item, is_closed: !e.target.checked }
                             : item,
                         ),
                       )
                     }
                   />{" "}
-                  Κλειστά
+                  Ανοιχτό
+                </label>
+                <label className="time-field-label">
+                  <span>Από</span>
+                  <input
+                    type="time"
+                    disabled={hour.is_closed}
+                    value={formatTimeInputValue(hour.start_time)}
+                    onChange={(e) =>
+                      setHours(
+                        hours.map((item) =>
+                          item.day_of_week === hour.day_of_week
+                            ? { ...item, start_time: e.target.value }
+                            : item,
+                        ),
+                      )
+                    }
+                  />
+                </label>
+                <span className="time-range-separator">–</span>
+                <label className="time-field-label">
+                  <span>Έως</span>
+                  <input
+                    type="time"
+                    disabled={hour.is_closed}
+                    value={formatTimeInputValue(hour.end_time)}
+                    onChange={(e) =>
+                      setHours(
+                        hours.map((item) =>
+                          item.day_of_week === hour.day_of_week
+                            ? { ...item, end_time: e.target.value }
+                            : item,
+                        ),
+                      )
+                    }
+                  />
                 </label>
               </div>
             ))}
           </div>
           <div className="form-actions">
-            <button className="primary-button">Αποθήκευση αλλαγών</button>
+            <button
+              type="button"
+              className="primary-button"
+              onClick={() => saveWorkingHours()}
+            >
+              Αποθήκευση ωραρίου
+            </button>
           </div>
+          <section className="panel" style={{ marginTop: "24px" }}>
+            <div className="panel-heading">
+              <div>
+                <h2>Το πακέτο μου</h2>
+                <p>Τρέχον πακέτο και διαθέσιμες επιλογές.</p>
+              </div>
+            </div>
+            <div className="form-grid">
+              <div className="table-person" style={{ gridColumn: "1 / -1" }}>
+                <div className="avatar blue">{subscriptionPlans[currentPlan].label.slice(0, 2)}</div>
+                <div>
+                  <strong>{subscriptionPlans[currentPlan].label}</strong>
+                  <small>{subscriptionPlans[currentPlan].price}</small>
+                </div>
+              </div>
+              <div style={{ gridColumn: "1 / -1" }}>
+                <ul>
+                  {(subscriptionPlans[currentPlan].features || []).map((feature) => (
+                    <li key={feature}>{feature}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+            {currentPlan === "basic" && (
+              <div className="form-actions" style={{ marginTop: "16px" }}>
+                <button
+                  type="button"
+                  className="primary-button"
+                  onClick={upgradePlan}
+                  disabled={upgradeLoading}
+                >
+                  {upgradeLoading ? "Αναβάθμιση..." : "Αναβάθμιση σε Plus"}
+                </button>
+              </div>
+            )}
+          </section>
         </form>
       </section>
     </>
@@ -1491,6 +1853,7 @@ function AuthPage({ mode, customer = false }) {
           description: "",
           address: "",
           phone: "",
+          subscription_plan: "basic",
         });
       if (businessError) setError(errorText(businessError));
       else navigate("/dashboard");
@@ -1501,12 +1864,12 @@ function AuthPage({ mode, customer = false }) {
   return (
     <div className="auth-layout">
       <div className="auth-aside">
-        <Link className="brand light" to="/">
+        <RoleAwareHomeLink className="brand light">
           <span className="brand-mark">B</span>
           <span>
             book<span>easy</span>
           </span>
-        </Link>
+        </RoleAwareHomeLink>
         <div>
           <span className="eyebrow">Η ΠΛΑΤΦΟΡΜΑ ΓΙΑ ΤΟ ΕΠΟΜΕΝΟ ΡΑΝΤΕΒΟΥ</span>
           <h1>
@@ -1726,13 +2089,16 @@ function PublicBooking() {
   return (
     <div className="public-page">
       <header className="public-header">
-        <Link className="brand" to="/">
+        <RoleAwareHomeLink className="brand">
           <span className="brand-mark">B</span>
           <span>
             book<span>easy</span>
           </span>
-        </Link>
-        <Link className="public-login" to="/login">
+        </RoleAwareHomeLink>
+        <Link
+          className="public-login"
+          to={supabase && isSupabaseConfigured ? "/dashboard" : "/login"}
+        >
           Είμαι επαγγελματίας <ChevronRight size={15} />
         </Link>
       </header>
@@ -1903,12 +2269,12 @@ function CustomerAppointments() {
   return (
     <div className="customer-page">
       <header className="public-header">
-        <Link className="brand" to="/">
+        <RoleAwareHomeLink className="brand">
           <span className="brand-mark">B</span>
           <span>
             book<span>easy</span>
           </span>
-        </Link>
+        </RoleAwareHomeLink>
         <Link className="public-login" to="/dashboard">
           Πίσω στον χώρο εργασίας
         </Link>

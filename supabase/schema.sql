@@ -12,6 +12,9 @@ create table public.businesses (
   primary_color text not null default '#1664d9',
   address text,
   phone text,
+  subscription_plan text not null default 'basic' check (subscription_plan in ('basic', 'plus')),
+  city text,
+  category text,
   created_at timestamptz not null default now()
 );
 
