@@ -501,7 +501,7 @@ function ProfileRedirect({ business }) {
 
   useEffect(() => {
     if (business?.slug) {
-      navigate(`/b/${business.slug}`, { replace: true });
+      navigate(`/b/${business.slug}?from=dashboard`, { replace: true });
     }
   }, [business?.slug, navigate]);
 

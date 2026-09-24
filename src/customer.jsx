@@ -155,6 +155,14 @@ export function CustomerHome() {
     : businesses;
   return (
     <CustomerShell>
+      {#if fromDashboard}
+        <box padding={{top:"16px",x:"16px"}}>
+          <button variant=outline color=secondary size=sm onClick={() => navigate("/dashboard")}>
+            <icon name=arrow-left size=xs/>
+            Πίσω στο Dashboard
+          </button>
+        </box>
+      {/if}
       <main className="customer-home">
         <section className="customer-hero">
           <span className="eyebrow">BOOKEASY</span>
@@ -548,6 +556,8 @@ export function CustomerBooking() {
   const [bookingError, setBookingError] = useState("");
   const [success, setSuccess] = useState(null);
   const bookingPath = `/b/${encodeURIComponent(slug)}`;
+  const fromDashboard =
+    new URLSearchParams(window.location.search).get("from") === "dashboard";
   const handleBookingClick = () => {
     if (!user) {
       navigate(`/customer-login?returnTo=${encodeURIComponent(bookingPath)}`);
