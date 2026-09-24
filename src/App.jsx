@@ -523,7 +523,25 @@ function StatCard({ icon: Icon, label, value, trend, tone }) {
   );
 }
 function Overview({ appointments, business, hours }) {
-  const items = appointments.data.slice(0, 4);
+  const today = new Date().toISOString().slice(0, 10);
+  const todayItems = appointments.data.filter(
+    (appointment) => appointment.appointment_date === today,
+  );
+  const items = todayItems.slice(0, 4);
+  const weekStart = new Date(`${today}T00:00:00`);
+  weekStart.setDate(weekStart.getDate() - ((weekStart.getDay() + 6) % 7));
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekEnd.getDate() + 7);
+  const weekItems = appointments.data.filter((appointment) => {
+    const appointmentDate = new Date(`${appointment.appointment_date}T12:00:00`);
+    return appointmentDate >= weekStart && appointmentDate < weekEnd;
+  });
+  const customerCount = new Set(
+    appointments.data.map((appointment) => appointment.customer_id),
+  ).size;
+  const serviceCount = new Set(
+    appointments.data.map((appointment) => appointment.service_id),
+  ).size;
   const [copied, setCopied] = useState(false);
   const publicUrl = `${window.location.origin}/b/${business.slug}`;
   const copyPublicUrl = async () => {
@@ -559,28 +577,28 @@ function Overview({ appointments, business, hours }) {
           icon={CalendarDays}
           label="Σημερινά ραντεβού"
           value={items.length}
-          trend="Ενημερωμένα live"
+          trend="Ενημερωμένα από τη βάση"
           tone="blue"
         />
         <StatCard
           icon={Users}
           label="Ενεργοί πελάτες"
-          value="—"
-          trend="Από τη βάση σας"
+          value={customerCount}
+          trend="Με ραντεβού"
           tone="green"
         />
         <StatCard
           icon={Scissors}
           label="Υπηρεσίες"
-          value="—"
-          trend="Ενεργές υπηρεσίες"
+          value={serviceCount}
+          trend="Σε ραντεβού"
           tone="orange"
         />
         <StatCard
           icon={Clock3}
-          label="Πληρότητα εβδομάδας"
-          value="—"
-          trend="Υπολογίζεται live"
+          label="Ραντεβού εβδομάδας"
+          value={weekItems.length}
+          trend="Συνολικές κρατήσεις"
           tone="violet"
         />
       </div>
@@ -714,6 +732,31 @@ function AppointmentRow({ appointment }) {
   );
 }
 function Calendar({ appointments }) {
+  const [weekStart, setWeekStart] = useState(() => {
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
+    return start;
+  });
+  const weekDays = Array.from({ length: 7 }, (_, index) => {
+    const day = new Date(weekStart);
+    day.setDate(day.getDate() + index);
+    return day;
+  });
+  const shiftWeek = (amount) => {
+    const next = new Date(weekStart);
+    next.setDate(next.getDate() + amount * 7);
+    setWeekStart(next);
+  };
+  const resetWeek = () => {
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
+    setWeekStart(start);
+  };
+  const isCurrentWeek = weekDays.some(
+    (day) => day.toDateString() === new Date().toDateString(),
+  );
   return (
     <>
       <PageHeader
@@ -722,46 +765,71 @@ function Calendar({ appointments }) {
         subtitle="Δείτε και διαχειριστείτε όλα τα ραντεβού σας."
       />
       <div className="calendar-toolbar">
-        <button className="icon-button">
+        <button className="icon-button" onClick={() => shiftWeek(-1)}>
           <ChevronLeft size={18} />
         </button>
-        <strong>Αυτή η εβδομάδα</strong>
-        <button className="icon-button">
+        <strong>
+          {isCurrentWeek
+            ? "Αυτή η εβδομάδα"
+            : `${weekDays[0].toLocaleDateString("el-GR", { day: "numeric", month: "short" })} – ${weekDays[6].toLocaleDateString("el-GR", { day: "numeric", month: "short" })}`}
+        </strong>
+        <button className="icon-button" onClick={() => shiftWeek(1)}>
           <ChevronRight size={18} />
         </button>
-        <button className="outline-button today">Σήμερα</button>
+        <button className="outline-button today" onClick={resetWeek}>
+          Σήμερα
+        </button>
       </div>
       <section className="panel calendar-panel">
         <div className="week-grid">
-          {["Δευ", "Τρι", "Τετ", "Πεμ", "Παρ", "Σαβ", "Κυρ"].map(
-            (day, index) => (
-              <div className={index === 0 ? "today-column" : ""} key={day}>
-                <strong>{day}</strong>
-                <span>{index === 0 ? "Σήμερα" : ""}</span>
+          {weekDays.map((day) => (
+              <div
+                className={
+                  day.toDateString() === new Date().toDateString()
+                    ? "today-column"
+                    : ""
+                }
+                key={day.toISOString()}
+              >
+                <strong>
+                  {day.toLocaleDateString("el-GR", { weekday: "short" })}
+                </strong>
+                <span>{day.getDate()}</span>
               </div>
-            ),
-          )}
+            ))}
         </div>
         <div className="calendar-body">
-          {appointments.data.map((appointment, index) => (
-            <div
-              key={appointment.id}
-              className="calendar-event"
-              style={{
-                gridColumn: (index % 4) + 1,
-                top: `${index * 72 + 24}px`,
-              }}
-            >
-              <b>
-                {new Date(appointment.starts_at).toLocaleTimeString("el-GR", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              </b>
-              <span>{appointment.customer_name}</span>
-              <small>{appointment.service?.name || "Υπηρεσία"}</small>
-            </div>
-          ))}
+          {appointments.data
+            .filter((appointment) =>
+              weekDays.some(
+                (day) =>
+                  appointment.appointment_date ===
+                  day.toISOString().slice(0, 10),
+              ),
+            )
+            .map((appointment) => {
+              const column = weekDays.findIndex(
+                (day) =>
+                  appointment.appointment_date ===
+                  day.toISOString().slice(0, 10),
+              );
+              return (
+                <div
+                  key={appointment.id}
+                  className="calendar-event"
+                  style={{ gridColumn: column + 1 }}
+                >
+                  <b>
+                    {new Date(appointment.starts_at).toLocaleTimeString("el-GR", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </b>
+                  <span>{appointment.customer_name}</span>
+                  <small>{appointment.service?.name || "Υπηρεσία"}</small>
+                </div>
+              );
+            })}
         </div>
       </section>
     </>
@@ -1034,6 +1102,7 @@ function Services({ business }) {
 function Staff({ business }) {
   const store = useData("staff", business.id, { order: "name" });
   const [editing, setEditing] = useState(null);
+  const [hoursFor, setHoursFor] = useState(null);
   const save = async (form) => {
     const payload = {
       business_id: business.id,
@@ -1096,6 +1165,12 @@ function Staff({ business }) {
                 Επεξεργασία
               </button>
               <button
+                className="outline-button"
+                onClick={() => setHoursFor(person)}
+              >
+                Ωράριο
+              </button>
+              <button
                 className="mini-action danger"
                 onClick={() => remove(person.id)}
               >
@@ -1117,7 +1192,143 @@ function Staff({ business }) {
           onSave={save}
         />
       )}
+      {hoursFor && (
+        <StaffHoursEditor
+          business={business}
+          staffMember={hoursFor}
+          onClose={() => setHoursFor(null)}
+        />
+      )}
     </>
+  );
+}
+
+function StaffHoursEditor({ business, staffMember, onClose }) {
+  const [hours, setHours] = useState([]);
+  const [message, setMessage] = useState("");
+  useEffect(() => {
+    async function load() {
+      const { data, error } = await supabase
+        .from("working_hours")
+        .select("*")
+        .eq("business_id", business.id)
+        .eq("staff_id", staffMember.id)
+        .order("day_of_week");
+      if (error) {
+        setMessage(errorText(error));
+        return;
+      }
+      setHours(
+        (data?.length
+          ? data
+          : dayNames.map((name, day_of_week) => ({
+              name,
+              day_of_week,
+              start_time: "09:00:00",
+              end_time: "18:00:00",
+              is_closed: day_of_week === 0,
+            })))
+          .map((item) => ({ ...item, name: dayNames[item.day_of_week] })),
+      );
+    }
+    load();
+  }, [business.id, staffMember.id]);
+  const save = async (event) => {
+    event.preventDefault();
+    const { error: deleteError } = await supabase
+      .from("working_hours")
+      .delete()
+      .eq("business_id", business.id)
+      .eq("staff_id", staffMember.id);
+    if (deleteError) {
+      setMessage(errorText(deleteError));
+      return;
+    }
+    const { error: insertError } = await supabase.from("working_hours").insert(
+      hours.map(({ id, name, ...hour }) => ({
+        ...hour,
+        business_id: business.id,
+        staff_id: staffMember.id,
+      })),
+    );
+    if (insertError) setMessage(errorText(insertError));
+    else onClose();
+  };
+  return (
+    <div className="modal-backdrop open">
+      <div className="modal">
+        <div className="modal-header">
+          <div>
+            <span className="eyebrow">ΩΡΑΡΙΟ ΠΡΟΣΩΠΙΚΟΥ</span>
+            <h2>{staffMember.name}</h2>
+          </div>
+          <button className="icon-button" onClick={onClose}>
+            <X size={18} />
+          </button>
+        </div>
+        <form onSubmit={save}>
+          {message && <Notice message={message} />}
+          <div className="hours-editor">
+            {hours.map((hour) => (
+              <div key={hour.day_of_week}>
+                <strong>{hour.name}</strong>
+                <input
+                  type="time"
+                  disabled={hour.is_closed}
+                  value={hour.start_time?.slice(0, 5) || "09:00"}
+                  onChange={(event) =>
+                    setHours(
+                      hours.map((item) =>
+                        item.day_of_week === hour.day_of_week
+                          ? { ...item, start_time: event.target.value }
+                          : item,
+                      ),
+                    )
+                  }
+                />
+                <span>–</span>
+                <input
+                  type="time"
+                  disabled={hour.is_closed}
+                  value={hour.end_time?.slice(0, 5) || "18:00"}
+                  onChange={(event) =>
+                    setHours(
+                      hours.map((item) =>
+                        item.day_of_week === hour.day_of_week
+                          ? { ...item, end_time: event.target.value }
+                          : item,
+                      ),
+                    )
+                  }
+                />
+                <label className="check-label">
+                  <input
+                    type="checkbox"
+                    checked={hour.is_closed}
+                    onChange={(event) =>
+                      setHours(
+                        hours.map((item) =>
+                          item.day_of_week === hour.day_of_week
+                            ? { ...item, is_closed: event.target.checked }
+                            : item,
+                        ),
+                      )
+                    }
+                  />
+                  Κλειστά
+                </label>
+              </div>
+            ))}
+          </div>
+          <div className="modal-footer">
+            <button type="button" className="outline-button" onClick={onClose}>
+              Άκυρο
+            </button>
+            <button className="primary-button">Αποθήκευση</button>
+          </div>
+        </form>
+      </div>
+    </div>
   );
 }
 
@@ -1126,6 +1337,14 @@ function Profile({ business, setBusiness }) {
   const [message, setMessage] = useState("");
   const [hours, setHours] = useState([]);
   const [photos, setPhotos] = useState("");
+  const defaultHours = dayNames.map((name, day_of_week) => ({
+    name,
+    day_of_week,
+    start_time: "09:00:00",
+    end_time: "18:00:00",
+    is_closed: day_of_week === 0,
+    staff_id: null,
+  }));
   useEffect(() => {
     Promise.all([
       supabase.from("working_hours").select("*").eq("business_id", business.id),
@@ -1137,7 +1356,7 @@ function Profile({ business, setBusiness }) {
     ]).then(([hourResult, mediaResult]) => {
       if (hourResult.error) setMessage(errorText(hourResult.error));
       setHours(
-        (hourResult.data || []).map((item) => ({
+        (hourResult.data?.length ? hourResult.data : defaultHours).map((item) => ({
           ...item,
           name: dayNames[item.day_of_week],
         })),
@@ -1469,6 +1688,13 @@ function AuthPage({ mode, customer = false }) {
           });
     if (result.error) setError(errorText(result.error));
     else if (mode === "register" && result.data.user && !customer) {
+      if (!result.data.session) {
+        setError(
+          "Ελέγξτε το email σας για επιβεβαίωση και μετά συνδεθείτε για να δημιουργήσετε τον χώρο σας.",
+        );
+        setLoading(false);
+        return;
+      }
       const baseSlug = slugify(form.businessName);
       let slug = baseSlug;
       let suffix = 2;
@@ -1593,6 +1819,8 @@ function AuthPage({ mode, customer = false }) {
 }
 
 function PublicBooking() {
+  return null;
+  /*
   const { slug } = useParams();
   const [business, setBusiness] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -1854,35 +2082,7 @@ function PublicBooking() {
       </main>
     </div>
   );
-}
-function getAvailableSlots(date, service, hours, appointments) {
-  if (!service) return [];
-  const day = new Date(`${date}T12:00:00`).getDay();
-  const hour = hours.find((item) => Number(item.day_of_week) === day);
-  if (!hour || hour.is_closed) return [];
-  const [openH, openM] = hour.start_time.slice(0, 5).split(":").map(Number);
-  const [closeH, closeM] = hour.end_time.slice(0, 5).split(":").map(Number);
-  const result = [];
-  for (
-    let minutes = openH * 60 + openM;
-    minutes + service.duration_minutes <= closeH * 60 + closeM;
-    minutes += 30
-  ) {
-    const start = new Date(
-      `${date}T${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}:00`,
-    );
-    const end = new Date(start.getTime() + service.duration_minutes * 60000);
-    if (
-      !appointments.some(
-        (item) =>
-          start < new Date(item.ends_at) && end > new Date(item.starts_at),
-      )
-    )
-      result.push(
-        `${String(start.getHours()).padStart(2, "0")}:${String(start.getMinutes()).padStart(2, "0")}`,
-      );
-  }
-  return result;
+  */
 }
 function CustomerAppointments() {
   const { user } = useAuth();

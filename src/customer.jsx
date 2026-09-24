@@ -269,6 +269,13 @@ export function CustomerAuth({ mode }) {
       setLoading(false);
       return;
     }
+    if (mode === "register" && !result.data.session) {
+      setError(
+        "Ελέγξτε το email σας για επιβεβαίωση και μετά συνδεθείτε για να συνεχίσετε.",
+      );
+      setLoading(false);
+      return;
+    }
     if (mode === "register" && result.data.user) {
       const { error: profileError } = await supabase
         .from("customer_profiles")
@@ -569,7 +576,20 @@ export function CustomerBooking() {
   useEffect(() => {
     async function loadAppointments() {
       if (!data?.business?.id || !selectedStaff) return;
-      setAppointments([]);
+      const { data: rows, error: requestError } = await supabase.rpc(
+        "get_booked_intervals",
+        {
+          target_business: data.business.id,
+          target_staff: selectedStaff.id,
+          target_date: date,
+        },
+      );
+      if (requestError) {
+        setBookingError(errorText(requestError));
+        setAppointments([]);
+        return;
+      }
+      setAppointments(rows || []);
     }
     loadAppointments();
   }, [data?.business?.id, date, selectedStaff?.id]);
