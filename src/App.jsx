@@ -479,14 +479,12 @@ function Dashboard({
             <Route path="staff" element={<Staff business={business} />} />
             <Route
               path="profile"
-              element={
-                <Profile business={business} setBusiness={setBusiness} />
-              }
+              element={<PublicBooking />}
             />
             <Route
               path="settings"
               element={
-                <WorkingHours business={business} setBusiness={setBusiness} />
+                <Profile business={business} setBusiness={setBusiness} />
               }
             />
           </Routes>
