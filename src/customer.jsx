@@ -552,10 +552,11 @@ function getSlots(date, service, staffMember, hours, appointments) {
   return slots;
 }
 
-export function CustomerBooking({ dashboardMode = false }) {
-  const { slug } = useParams();
+export function CustomerBooking({ dashboardMode = false, business: dashboardBusiness = null }) {
+  const { slug: urlSlug } = useParams();
   const navigate = useNavigate();
   const { user, loading: authLoading } = useCustomerAuth();
+  const slug = dashboardMode ? dashboardBusiness?.slug : urlSlug;
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -580,6 +581,20 @@ export function CustomerBooking({ dashboardMode = false }) {
       ?.scrollIntoView({ behavior: "smooth" });
   };
   useEffect(() => {
+    if (dashboardMode && dashboardBusiness) {
+      loadBusinessData(dashboardBusiness.slug)
+        .then((result) => {
+          setData(result);
+          setServiceId(result.services[0]?.id || "");
+          setLoading(false);
+        })
+        .catch((requestError) => {
+          setError(requestError.message);
+          setLoading(false);
+        });
+      return;
+    }
+
     loadBusinessData(slug)
       .then((result) => {
         setData(result);
@@ -590,7 +605,7 @@ export function CustomerBooking({ dashboardMode = false }) {
         setError(requestError.message);
         setLoading(false);
       });
-  }, [slug]);
+  }, [slug, dashboardMode, dashboardBusiness]);
   useEffect(() => {
     if (user)
       setDetails({
