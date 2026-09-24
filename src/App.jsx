@@ -479,7 +479,9 @@ function Dashboard({
             <Route path="staff" element={<Staff business={business} />} />
             <Route
               path="profile"
-              element={<PublicBooking />}
+              element={
+                <ProfileRedirect business={business} />
+              }
             />
             <Route
               path="settings"
@@ -492,6 +494,18 @@ function Dashboard({
       </main>
     </div>
   );
+}
+
+function ProfileRedirect({ business }) {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (business?.slug) {
+      navigate(`/b/${business.slug}`, { replace: true });
+    }
+  }, [business?.slug, navigate]);
+
+  return null;
 }
 
 function PageHeader({ eyebrow, title, subtitle, action }) {
