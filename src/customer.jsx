@@ -24,6 +24,10 @@ const errorText = (error) =>
   error?.code === "23P01"
     ? "Η ώρα έχει ήδη κρατηθεί. Επιλέξτε άλλη διαθέσιμη ώρα."
     : error?.message || "Παρουσιάστηκε σφάλμα. Δοκιμάστε ξανά.";
+const safeReturnPath = (value, fallback = "/customer") => {
+  if (!value || !value.startsWith("/") || value.startsWith("//")) return fallback;
+  return value;
+};
 const dayNames = [
   "Κυριακή",
   "Δευτέρα",
@@ -75,7 +79,7 @@ function CustomerNotice({ message, success = false }) {
 function CustomerHeader({ user, onLogout }) {
   return (
     <header className="public-header">
-      <Link className="brand" to="/customer">
+      <Link className="brand" to="/">
         <span className="brand-mark">B</span>
         <span>
           book<span>easy</span>
@@ -131,8 +135,9 @@ export function CustomerHome() {
       const { data, error: requestError } = await supabase
         .from("businesses")
         .select(
-          "id,name,slug,description,address,phone,logo_url,cover_image_url",
+          "id,name,slug,description,address,city,category,phone,logo_url,cover_image_url,subscription_plan",
         )
+        .eq("subscription_plan", "plus")
         .order("name");
       setBusinesses(data || []);
       setError(requestError ? errorText(requestError) : "");
@@ -140,11 +145,14 @@ export function CustomerHome() {
     }
     load();
   }, []);
-  const filtered = businesses.filter((business) =>
-    `${business.name} ${business.description || ""} ${business.address || ""}`
-      .toLowerCase()
-      .includes(query.toLowerCase()),
-  );
+  const normalizedQuery = query.trim().toLowerCase();
+  const filtered = normalizedQuery
+    ? businesses.filter((business) =>
+        `${business.name} ${business.description || ""} ${business.address || ""} ${business.city || ""} ${business.category || ""}`
+          .toLowerCase()
+          .includes(normalizedQuery),
+      )
+    : businesses;
   return (
     <CustomerShell>
       <main className="customer-home">
@@ -201,7 +209,8 @@ export function CustomerHome() {
                         "Κλείστε το επόμενο ραντεβού σας online."}
                     </p>
                     <small>
-                      {business.address || "Online κρατήσεις"}{" "}
+                      {business.city || business.address || "Online κρατήσεις"}
+                      {business.category ? ` · ${business.category}` : ""}{" "}
                       <ChevronRight size={14} />
                     </small>
                   </div>
@@ -223,7 +232,7 @@ export function CustomerHome() {
 export function CustomerAuth({ mode }) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const returnTo = searchParams.get("returnTo") || "/customer";
+  const returnTo = safeReturnPath(searchParams.get("returnTo"));
   const [form, setForm] = useState({
     fullName: "",
     phone: "",
@@ -297,7 +306,7 @@ export function CustomerAuth({ mode }) {
   return (
     <div className="auth-layout">
       <div className="auth-aside">
-        <Link className="brand light" to="/customer">
+        <Link className="brand light" to="/">
           <span className="brand-mark">B</span>
           <span>
             book<span>easy</span>
@@ -404,7 +413,7 @@ export function CustomerAuth({ mode }) {
               ? "Δεν έχετε λογαριασμό;"
               : "Έχετε ήδη λογαριασμό;"}{" "}
             <Link
-              to={mode === "login" ? "/customer-register" : "/customer-login"}
+              to={`${mode === "login" ? "/customer-register" : "/customer-login"}?returnTo=${encodeURIComponent(returnTo)}`}
             >
               {mode === "login" ? "Εγγραφή" : "Σύνδεση"}
             </Link>
@@ -538,6 +547,16 @@ export function CustomerBooking() {
   const [details, setDetails] = useState({ name: "", phone: "", email: "" });
   const [bookingError, setBookingError] = useState("");
   const [success, setSuccess] = useState(null);
+  const bookingPath = `/b/${encodeURIComponent(slug)}`;
+  const handleBookingClick = () => {
+    if (!user) {
+      navigate(`/customer-login?returnTo=${encodeURIComponent(bookingPath)}`);
+      return;
+    }
+    document
+      .querySelector(".booking-card")
+      ?.scrollIntoView({ behavior: "smooth" });
+  };
   useEffect(() => {
     loadBusinessData(slug)
       .then((result) => {
@@ -601,7 +620,7 @@ export function CustomerBooking() {
   const confirm = async () => {
     setBookingError("");
     if (!user) {
-      navigate(`/customer-login?returnTo=/b/${slug}`);
+      navigate(`/customer-login?returnTo=${encodeURIComponent(bookingPath)}`);
       return;
     }
     if (!supabase || !isSupabaseConfigured) {
@@ -701,7 +720,7 @@ export function CustomerBooking() {
       <main
         className="booking-layout customer-booking-layout"
         style={{
-          "--business-accent": data.business.primary_color || "#1664d9",
+          "--business-accent": data.business.primary_color || "#718A68",
         }}
       >
         <section
@@ -709,7 +728,7 @@ export function CustomerBooking() {
           style={
             data.business.cover_image_url
               ? {
-                  backgroundImage: `linear-gradient(180deg, #12356e22, #f7f9fc), url(${data.business.cover_image_url})`,
+                  backgroundImage: `linear-gradient(180deg, rgba(121,85,72,.14), #F5F0E6), url(${data.business.cover_image_url})`,
                   backgroundSize: "cover",
                   backgroundPosition: "center",
                 }
@@ -743,11 +762,7 @@ export function CustomerBooking() {
           </div>
           <button
             className="primary-button public-booking-cta"
-            onClick={() =>
-              document
-                .querySelector(".booking-card")
-                ?.scrollIntoView({ behavior: "smooth" })
-            }
+            onClick={handleBookingClick}
           >
             Κλείσε ραντεβού <ChevronRight size={17} />
           </button>
@@ -912,13 +927,13 @@ export function CustomerBooking() {
                 <div className="booking-auth-actions">
                   <Link
                     className="outline-button"
-                    to={`/customer-login?returnTo=/b/${slug}`}
+                    to={`/customer-login?returnTo=${encodeURIComponent(bookingPath)}`}
                   >
                     Σύνδεση
                   </Link>
                   <Link
                     className="primary-button"
-                    to={`/customer-register?returnTo=/b/${slug}`}
+                    to={`/customer-register?returnTo=${encodeURIComponent(bookingPath)}`}
                   >
                     Εγγραφή
                   </Link>

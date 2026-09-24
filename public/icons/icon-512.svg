@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="BookEasy">
+  <rect width="512" height="512" rx="112" fill="#F5F0E6"/>
+  <rect x="64" y="64" width="384" height="384" rx="90" fill="#718A68"/>
+  <circle cx="256" cy="256" r="138" fill="#795548"/>
+  <path d="M194 178h91c35 0 58 21 58 51 0 23-13 38-34 46 26 6 45 24 45 53 0 34-26 58-64 58H194V178Zm52 44v40h28c13 0 21-8 21-21s-8-19-21-19h-28Zm0 84v40h36c15 0 23-8 23-20s-8-20-23-20h-36Z" fill="#C6A15B"/>
+</svg>
