@@ -479,9 +479,7 @@ function Dashboard({
             <Route path="staff" element={<Staff business={business} />} />
             <Route
               path="profile"
-              element={
-                <ProfileRedirect business={business} />
-              }
+              element={<CustomerBooking dashboardMode={true} />}
             />
             <Route
               path="settings"

@@ -153,8 +153,8 @@ export function CustomerHome() {
           .includes(normalizedQuery),
       )
     : businesses;
-  return (
-    <CustomerShell>
+  const content = (
+    <>
       {fromDashboard && (
         <div style={{ padding: "16px" }}>
           <button
@@ -242,8 +242,11 @@ export function CustomerHome() {
           )}
         </section>
       </main>
-    </CustomerShell>
+    </>
   );
+
+  if (dashboardMode) return content;
+  return <CustomerShell>{content}</CustomerShell>;
 }
 
 export function CustomerAuth({ mode }) {
@@ -549,7 +552,7 @@ function getSlots(date, service, staffMember, hours, appointments) {
   return slots;
 }
 
-export function CustomerBooking() {
+export function CustomerBooking({ dashboardMode = false }) {
   const { slug } = useParams();
   const navigate = useNavigate();
   const { user, loading: authLoading } = useCustomerAuth();
@@ -734,8 +737,8 @@ export function CustomerBooking() {
         </main>
       </CustomerShell>
     );
-  return (
-    <CustomerShell>
+  const content = (
+    <>
       <main
         className="booking-layout customer-booking-layout"
         style={{
@@ -962,8 +965,11 @@ export function CustomerBooking() {
           )}
         </section>
       </main>
-    </CustomerShell>
+    </>
   );
+
+  if (dashboardMode) return content;
+  return <CustomerShell>{content}</CustomerShell>;
 }
 
 export function CustomerAppointmentsPage() {
@@ -1022,8 +1028,8 @@ export function CustomerAppointmentsPage() {
     ),
     cancelled: appointments.filter((item) => item.status === "cancelled"),
   };
-  return (
-    <CustomerShell>
+  const content = (
+    <>
       <main className="customer-content">
         <div className="customer-page-heading">
           <span className="eyebrow">ΠΕΛΑΤΗΣ</span>
@@ -1091,8 +1097,11 @@ export function CustomerAppointmentsPage() {
           </div>
         )}
       </main>
-    </CustomerShell>
+    </>
   );
+
+  if (dashboardMode) return content;
+  return <CustomerShell>{content}</CustomerShell>;
 }
 
 export function CustomerProfile() {
@@ -1171,8 +1180,8 @@ export function CustomerProfile() {
     else setMessage("Το προφίλ σας ενημερώθηκε.");
   };
   if (loading) return <CustomerLoading />;
-  return (
-    <CustomerShell>
+  const content = (
+    <>
       <main className="customer-content">
         <div className="customer-page-heading">
           <span className="eyebrow">ΛΟΓΑΡΙΑΣΜΟΣ</span>
@@ -1222,6 +1231,9 @@ export function CustomerProfile() {
           </button>
         </section>
       </main>
-    </CustomerShell>
+    </>
   );
+
+  if (dashboardMode) return content;
+  return <CustomerShell>{content}</CustomerShell>;
 }
