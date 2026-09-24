@@ -155,14 +155,23 @@ export function CustomerHome() {
     : businesses;
   return (
     <CustomerShell>
-      {#if fromDashboard}
-        <box padding={{top:"16px",x:"16px"}}>
-          <button variant=outline color=secondary size=sm onClick={() => navigate("/dashboard")}>
-            <icon name=arrow-left size=xs/>
-            Πίσω στο Dashboard
+      {fromDashboard && (
+        <div style={{ padding: "16px" }}>
+          <button
+            onClick={() => navigate("/dashboard")}
+            style={{
+              padding: "10px 14px",
+              borderRadius: "10px",
+              border: "1px solid #ddd",
+              background: "#fff",
+              cursor: "pointer",
+              fontWeight: 600
+            }}
+          >
+            ← Πίσω στο Dashboard
           </button>
-        </box>
-      {/if}
+        </div>
+      )}
       <main className="customer-home">
         <section className="customer-hero">
           <span className="eyebrow">BOOKEASY</span>
