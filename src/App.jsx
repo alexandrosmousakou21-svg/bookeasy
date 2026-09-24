@@ -1233,94 +1233,6 @@ function StaffHoursEditor({ business, staffMember, onClose }) {
     }
     load();
   }, [business.id, staffMember.id]);
-  const uploadMedia = async (file, folder) => {
-    if (!file) return null;
-    const extension = file.name.includes(".")
-      ? file.name.split(".").pop().toLowerCase()
-      : "jpg";
-    const safeName = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${extension}`;
-    const path = `${business.id}/${folder}/${safeName}`;
-
-    const { error } = await supabase.storage
-      .from("business-media")
-      .upload(path, file, {
-        cacheControl: "3600",
-        upsert: false,
-        contentType: file.type || undefined,
-      });
-
-    if (error) {
-      setMessage(errorText(error));
-      return null;
-    }
-
-    const { data } = supabase.storage
-      .from("business-media")
-      .getPublicUrl(path);
-
-    return data.publicUrl;
-  };
-
-  const handleLogoUpload = async (event) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    setUploading("logo");
-    const url = await uploadMedia(file, "logo");
-
-    if (url) {
-      setForm((current) => ({ ...current, logo_url: url }));
-      setMessage("Το logo ανέβηκε. Πάτησε «Αποθήκευση αλλαγών».");
-    }
-
-    setUploading("");
-    event.target.value = "";
-  };
-
-  const handleCoverUpload = async (event) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    setUploading("cover");
-    const url = await uploadMedia(file, "cover");
-
-    if (url) {
-      setForm((current) => ({ ...current, cover_image_url: url }));
-      setMessage("Το cover ανέβηκε. Πάτησε «Αποθήκευση αλλαγών».");
-    }
-
-    setUploading("");
-    event.target.value = "";
-  };
-
-  const handleGalleryUpload = async (event) => {
-    const files = Array.from(event.target.files || []);
-    if (!files.length) return;
-
-    setUploading("gallery");
-    const uploadedUrls = [];
-
-    for (const file of files) {
-      const url = await uploadMedia(file, "gallery");
-      if (url) uploadedUrls.push(url);
-    }
-
-    if (uploadedUrls.length) {
-      const existing = photos
-        .split(",")
-        .map((url) => url.trim())
-        .filter(Boolean);
-
-      setPhotos([...existing, ...uploadedUrls].join(", "));
-      setMessage(
-        `${uploadedUrls.length} φωτογραφία/φωτογραφίες ανέβηκαν. Πάτησε «Αποθήκευση αλλαγών».`,
-      );
-    }
-
-    setUploading("");
-    event.target.value = "";
-  };
-
   const save = async (event) => {
     event.preventDefault();
     const { error: deleteError } = await supabase
@@ -1454,7 +1366,96 @@ function Profile({ business, setBusiness }) {
       setPhotos((mediaResult.data || []).map((item) => item.url).join(", "));
     });
   }, [business.id]);
-  const save = async (event) => {
+  const uploadMedia = async (file, folder) => {
+    if (!file) return null;
+    const extension = file.name.includes(".")
+      ? file.name.split(".").pop().toLowerCase()
+      : "jpg";
+    const safeName = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${extension}`;
+    const path = `${business.id}/${folder}/${safeName}`;
+
+    const { error } = await supabase.storage
+      .from("business-media")
+      .upload(path, file, {
+        cacheControl: "3600",
+        upsert: false,
+        contentType: file.type || undefined,
+      });
+
+    if (error) {
+      setMessage(errorText(error));
+      return null;
+    }
+
+    const { data } = supabase.storage
+      .from("business-media")
+      .getPublicUrl(path);
+
+    return data.publicUrl;
+  };
+
+  const handleLogoUpload = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setUploading("logo");
+    const url = await uploadMedia(file, "logo");
+
+    if (url) {
+      setForm((current) => ({ ...current, logo_url: url }));
+      setMessage("Το logo ανέβηκε. Πάτησε «Αποθήκευση αλλαγών».");
+    }
+
+    setUploading("");
+    event.target.value = "";
+  };
+
+  const handleCoverUpload = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setUploading("cover");
+    const url = await uploadMedia(file, "cover");
+
+    if (url) {
+      setForm((current) => ({ ...current, cover_image_url: url }));
+      setMessage("Το cover ανέβηκε. Πάτησε «Αποθήκευση αλλαγών».");
+    }
+
+    setUploading("");
+    event.target.value = "";
+  };
+
+  const handleGalleryUpload = async (event) => {
+    const files = Array.from(event.target.files || []);
+    if (!files.length) return;
+
+    setUploading("gallery");
+    const uploadedUrls = [];
+
+    for (const file of files) {
+      const url = await uploadMedia(file, "gallery");
+      if (url) uploadedUrls.push(url);
+    }
+
+    if (uploadedUrls.length) {
+      const existing = photos
+        .split(",")
+        .map((url) => url.trim())
+        .filter(Boolean);
+
+      setPhotos([...existing, ...uploadedUrls].join(", "));
+      setMessage(
+        `${uploadedUrls.length} φωτογραφία/φωτογραφίες ανέβηκαν. Πάτησε «Αποθήκευση αλλαγών».`,
+      );
+    }
+
+    setUploading("");
+    event.target.value = "";
+  };
+
+  
+const save = async (event) => {
     event.preventDefault();
     const { error } = await supabase
       .from("businesses")
