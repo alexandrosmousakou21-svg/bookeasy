@@ -1233,6 +1233,94 @@ function StaffHoursEditor({ business, staffMember, onClose }) {
     }
     load();
   }, [business.id, staffMember.id]);
+  const uploadMedia = async (file, folder) => {
+    if (!file) return null;
+    const extension = file.name.includes(".")
+      ? file.name.split(".").pop().toLowerCase()
+      : "jpg";
+    const safeName = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${extension}`;
+    const path = `${business.id}/${folder}/${safeName}`;
+
+    const { error } = await supabase.storage
+      .from("business-media")
+      .upload(path, file, {
+        cacheControl: "3600",
+        upsert: false,
+        contentType: file.type || undefined,
+      });
+
+    if (error) {
+      setMessage(errorText(error));
+      return null;
+    }
+
+    const { data } = supabase.storage
+      .from("business-media")
+      .getPublicUrl(path);
+
+    return data.publicUrl;
+  };
+
+  const handleLogoUpload = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setUploading("logo");
+    const url = await uploadMedia(file, "logo");
+
+    if (url) {
+      setForm((current) => ({ ...current, logo_url: url }));
+      setMessage("Το logo ανέβηκε. Πάτησε «Αποθήκευση αλλαγών».");
+    }
+
+    setUploading("");
+    event.target.value = "";
+  };
+
+  const handleCoverUpload = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setUploading("cover");
+    const url = await uploadMedia(file, "cover");
+
+    if (url) {
+      setForm((current) => ({ ...current, cover_image_url: url }));
+      setMessage("Το cover ανέβηκε. Πάτησε «Αποθήκευση αλλαγών».");
+    }
+
+    setUploading("");
+    event.target.value = "";
+  };
+
+  const handleGalleryUpload = async (event) => {
+    const files = Array.from(event.target.files || []);
+    if (!files.length) return;
+
+    setUploading("gallery");
+    const uploadedUrls = [];
+
+    for (const file of files) {
+      const url = await uploadMedia(file, "gallery");
+      if (url) uploadedUrls.push(url);
+    }
+
+    if (uploadedUrls.length) {
+      const existing = photos
+        .split(",")
+        .map((url) => url.trim())
+        .filter(Boolean);
+
+      setPhotos([...existing, ...uploadedUrls].join(", "));
+      setMessage(
+        `${uploadedUrls.length} φωτογραφία/φωτογραφίες ανέβηκαν. Πάτησε «Αποθήκευση αλλαγών».`,
+      );
+    }
+
+    setUploading("");
+    event.target.value = "";
+  };
+
   const save = async (event) => {
     event.preventDefault();
     const { error: deleteError } = await supabase
@@ -1337,6 +1425,7 @@ function Profile({ business, setBusiness }) {
   const [message, setMessage] = useState("");
   const [hours, setHours] = useState([]);
   const [photos, setPhotos] = useState("");
+  const [uploading, setUploading] = useState("");
   const defaultHours = dayNames.map((name, day_of_week) => ({
     name,
     day_of_week,
@@ -1375,6 +1464,8 @@ function Profile({ business, setBusiness }) {
         description: form.description,
         address: form.address,
         phone: form.phone,
+        city: form.city,
+        category: form.category,
         logo_url: form.logo_url,
         cover_image_url: form.cover_image_url,
         primary_color: form.primary_color,
@@ -1507,20 +1598,38 @@ function Profile({ business, setBusiness }) {
               />
             </label>
             <label>
-              URL logo
+              Logo
               <input
-                value={form.logo_url || ""}
-                onChange={(e) => setForm({ ...form, logo_url: e.target.value })}
+                type="file"
+                accept="image/*"
+                onChange={handleLogoUpload}
+                disabled={uploading === "logo"}
               />
+              {uploading === "logo" && <small>Ανέβασμα logo...</small>}
+              {form.logo_url && (
+                <img
+                  className="profile-media-preview"
+                  src={form.logo_url}
+                  alt="Logo preview"
+                />
+              )}
             </label>
             <label>
-              URL cover/banner
+              Cover / banner
               <input
-                value={form.cover_image_url || ""}
-                onChange={(e) =>
-                  setForm({ ...form, cover_image_url: e.target.value })
-                }
+                type="file"
+                accept="image/*"
+                onChange={handleCoverUpload}
+                disabled={uploading === "cover"}
               />
+              {uploading === "cover" && <small>Ανέβασμα cover...</small>}
+              {form.cover_image_url && (
+                <img
+                  className="profile-cover-preview"
+                  src={form.cover_image_url}
+                  alt="Cover preview"
+                />
+              )}
             </label>
             <label>
               Primary color
@@ -1532,12 +1641,22 @@ function Profile({ business, setBusiness }) {
                 }
               />
             </label>
-            <label>
-              URLs φωτογραφιών
+            <label className="wide">
+              Φωτογραφίες gallery
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleGalleryUpload}
+                disabled={uploading === "gallery"}
+              />
+              {uploading === "gallery" && (
+                <small>Ανέβασμα φωτογραφιών...</small>
+              )}
               <input
                 value={photos}
                 onChange={(e) => setPhotos(e.target.value)}
-                placeholder="url1, url2, url3"
+                placeholder="ή βάλε URLs: url1, url2, url3"
               />
             </label>
           </div>
