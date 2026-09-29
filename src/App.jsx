@@ -846,6 +846,7 @@ function Calendar({ appointments }) {
   );
 }
 function Appointments({ appointments }) {
+  const [view, setView] = useState("today");
   const update = async (id, status) => {
     if (supabase) {
       const { error } = await supabase
@@ -856,6 +857,15 @@ function Appointments({ appointments }) {
       else appointments.reload();
     }
   };
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const visibleAppointments = appointments.data.filter((item) => {
+    const appointmentDate = new Date(item.starts_at);
+    appointmentDate.setHours(0, 0, 0, 0);
+    return view === "history" ? appointmentDate < today : appointmentDate >= today;
+  });
+
   const remove = async (id) => {
     if (supabase) {
       const { error } = await supabase
@@ -873,6 +883,10 @@ function Appointments({ appointments }) {
         title="Όλα τα ραντεβού"
         subtitle="Παρακολουθήστε τις κρατήσεις της επιχείρησής σας."
       />
+      <div className="calendar-toolbar">
+        <button className={view === "today" ? "primary-button" : "outline-button"} onClick={() => setView("today")}>Σήμερα</button>
+        <button className={view === "history" ? "primary-button" : "outline-button"} onClick={() => setView("history")}>Ιστορικό</button>
+      </div>
       <section className="panel table-panel">
         <table>
           <thead>
@@ -893,7 +907,7 @@ function Appointments({ appointments }) {
                 </td>
               </tr>
             ) : (
-              appointments.data.map((item) => (
+              visibleAppointments.map((item) => (
                 <tr key={item.id}>
                   <td>
                     <div className="table-person">
