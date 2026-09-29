@@ -22,6 +22,18 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
+            <!-- BookEasy public business deep links -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data
+                    android:scheme="https"
+                    android:host="bookeasy-mdod5y0zl-alexandrosmousakou21-svg.vercel.app"
+                    android:pathPrefix="/b/" />
+            </intent-filter>
+
         </activity>
 
         <provider
