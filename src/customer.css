@@ -1,4 +1,4 @@
-:root{--navy:#5A4638;--blue:#C9A98F;--blue-dark:#5A4638;--teal:#DCC8B5;--ink:#5A4638;--muted:#806B5B;--line:#E4D5C7;--surface:#FFFFFF;--green:#C9A98F;--orange:#B99175;--violet:#DCC8B5;--gold:#B99175;--cream:#F6EFE6}
+:root{--navy:#5A4638;--blue:#C9A98F;--blue-dark:#5A4638;--teal:#DCC8B5;--ink:#5A4638;--muted:#806B5B;--line:#E4D5C7;--surface:#FBF7F1;--green:#C9A98F;--orange:#B99175;--violet:#DCC8B5;--gold:#B99175;--cream:#F6EFE6}
 body{background:#F6EFE6;color:var(--ink)}
 .auth-aside{background:#F6EFE6!important;color:#5A4638}
 .auth-aside .eyebrow{color:#5A4638}
@@ -79,4 +79,52 @@ body .business-card-logo{background:#EDE2D6;color:#5A4638}
 .customer-booking-layout .booking-title .eyebrow,
 .customer-booking-layout .field-label {
   color: var(--business-accent);
+}
+
+
+/* BookEasy Global Beige/Brown UI */
+button,
+.btn,
+.button,
+a.btn,
+input,
+select,
+textarea {
+  border-radius: 10px;
+}
+
+button,
+.btn,
+.button,
+a.btn {
+  background: #C9A98F;
+  color: #5A4638;
+  border: 1px solid #E4D5C7;
+  box-shadow: none;
+  transition: background .18s ease, border-color .18s ease, transform .18s ease;
+}
+
+button:hover,
+.btn:hover,
+.button:hover,
+a.btn:hover {
+  background: #B99175;
+  color: #FFFFFF;
+  border-color: #B99175;
+}
+
+input,
+select,
+textarea {
+  background: #FBF7F1;
+  color: #5A4638;
+  border: 1px solid #E4D5C7;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: #C9A98F;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(201,169,143,.18);
 }
