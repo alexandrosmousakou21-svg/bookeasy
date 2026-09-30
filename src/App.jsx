@@ -742,11 +742,7 @@ function ProfessionalAI({ business, appointments, hours }) {
         {
           body: {
             message: text,
-            business: {
-              ...business,
-              hours: hours?.data || [],
-              appointments: appointments?.data || [],
-            },
+            business_id: business?.id,
           },
         },
       );
