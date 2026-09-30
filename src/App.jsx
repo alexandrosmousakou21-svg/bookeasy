@@ -316,13 +316,21 @@ function HomePage() {
 }
 function NavigateHome({ user }) {
   const navigate = useNavigate();
-  useEffect(
-    () =>
-      navigate(user ? "/dashboard" : "/login", {
-        replace: true,
-      }),
-    [navigate, user],
-  );
+
+  useEffect(() => {
+    if (!user) {
+      navigate("/login", { replace: true });
+      return;
+    }
+
+    if (user.user_metadata?.account_type === "customer") {
+      navigate("/customer", { replace: true });
+      return;
+    }
+
+    navigate("/dashboard", { replace: true });
+  }, [navigate, user]);
+
   return null;
 }
 
