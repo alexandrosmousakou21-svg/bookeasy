@@ -91,6 +91,7 @@ function CustomerHeader({ user, onLogout }) {
           <>
             <Link to="/my-appointments">Τα ραντεβού μου</Link>
             <Link to="/customer/profile">Το προφίλ μου</Link>
+            <Link to="/customer/support">Υποστήριξη πελατών</Link>
             <button className="customer-logout" onClick={onLogout}>
               <LogOut size={15} /> Αποσύνδεση
             </button>
@@ -550,9 +551,41 @@ export function CustomerBooking({ dashboardMode = false, business: dashboardBusi
   const [details, setDetails] = useState({ name: "", phone: "", email: "" });
   const [bookingError, setBookingError] = useState("");
   const [success, setSuccess] = useState(null);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatMessage, setChatMessage] = useState("");
+  const [chatReply, setChatReply] = useState("");
+  const [chatLoading, setChatLoading] = useState(false);
   const bookingPath = `/b/${encodeURIComponent(slug)}`;
   const fromDashboard =
     new URLSearchParams(window.location.search).get("from") === "dashboard";
+  const sendChatMessage = async () => {
+    if (!chatMessage.trim() || chatLoading) return;
+
+    setChatLoading(true);
+    setChatReply("");
+
+    try {
+      const { data: result, error } = await supabase.functions.invoke(
+        "ai-assistant",
+        {
+          body: {
+            message: chatMessage.trim(),
+            business: { ...data?.business, services: data?.services || [], hours: data?.hours || [] },
+          },
+        },
+      );
+
+      if (error) throw error;
+
+      setChatReply(result?.reply || "Δεν υπάρχει απάντηση.");
+      setChatMessage("");
+    } catch (err) {
+      setChatReply("Υπήρξε ένα πρόβλημα. Δοκίμασε ξανά.");
+    } finally {
+      setChatLoading(false);
+    }
+  };
+
   const handleBookingClick = () => {
     if (!user) {
       navigate(`/customer-login?returnTo=${encodeURIComponent(bookingPath)}`);
@@ -965,7 +998,61 @@ export function CustomerBooking({ dashboardMode = false, business: dashboardBusi
     </>
   );
 
-  return <CustomerShell>{content}</CustomerShell>;
+  return (
+    <CustomerShell>
+      {content}
+
+      <button
+        type="button"
+        className="ai-chat-button"
+        onClick={() => setChatOpen((open) => !open)}
+        aria-label="Άνοιγμα AI βοηθού"
+      >
+        🤖
+      </button>
+
+      {chatOpen && (
+        <div className="ai-chat-window">
+          <div className="ai-chat-header">
+            <strong>AI Βοηθός</strong>
+            <button type="button" onClick={() => setChatOpen(false)}>
+              ×
+            </button>
+          </div>
+
+          <div className="ai-chat-body">
+            <div className="ai-chat-message ai-chat-bot">
+              Γεια σας! Πώς μπορώ να σας βοηθήσω;
+            </div>
+
+            {chatReply && (
+              <div className="ai-chat-message ai-chat-bot">
+                {chatReply}
+              </div>
+            )}
+          </div>
+
+          <div className="ai-chat-input">
+            <input
+              value={chatMessage}
+              onChange={(event) => setChatMessage(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") sendChatMessage();
+              }}
+              placeholder="Γράψτε την ερώτησή σας..."
+            />
+            <button
+              type="button"
+              onClick={sendChatMessage}
+              disabled={chatLoading}
+            >
+              {chatLoading ? "..." : "➤"}
+            </button>
+          </div>
+        </div>
+      )}
+    </CustomerShell>
+  );
 }
 
 export function CustomerAppointmentsPage() {
@@ -1230,4 +1317,132 @@ export function CustomerProfile() {
   );
 
   return <CustomerShell>{content}</CustomerShell>;
+}
+
+export function CustomerSupportPage() {
+  const [message, setMessage] = useState("");
+  const [messages, setMessages] = useState([
+    {
+      role: "assistant",
+      text: "Γεια σας! 👋 Είμαι ο AI βοηθός του BookEasy. Πώς μπορώ να σας βοηθήσω;",
+    },
+  ]);
+  const [loading, setLoading] = useState(false);
+
+  const sendMessage = async (event) => {
+    event?.preventDefault();
+
+    const text = message.trim();
+
+    if (!text || loading) return;
+
+    setMessages((current) => [
+      ...current,
+      { role: "user", text },
+    ]);
+
+    setMessage("");
+    setLoading(true);
+
+    try {
+      const { data: result, error } = await supabase.functions.invoke(
+        "ai-assistant",
+        {
+          body: {
+            message: text,
+          },
+        },
+      );
+
+      if (error) throw error;
+
+      setMessages((current) => [
+        ...current,
+        {
+          role: "assistant",
+          text: result?.reply || "Δεν υπάρχει διαθέσιμη απάντηση.",
+        },
+      ]);
+    } catch (error) {
+      setMessages((current) => [
+        ...current,
+        {
+          role: "assistant",
+          text: "Υπήρξε ένα πρόβλημα με τον AI βοηθό. Δοκιμάστε ξανά.",
+        },
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <CustomerShell>
+      <main className="customer-section-page">
+        <section className="customer-section-card ai-support-card">
+          <div className="customer-section-icon">🤖</div>
+
+          <h1>Υποστήριξη πελατών</h1>
+
+          <p>
+            Ρωτήστε τον AI βοηθό για το BookEasy, τις κρατήσεις,
+            τον λογαριασμό σας ή οποιαδήποτε απορία έχετε.
+          </p>
+
+          <div className="ai-support-chat">
+            <div className="ai-support-messages">
+              {messages.map((item, index) => (
+                <div
+                  key={`${item.role}-${index}`}
+                  className={`ai-support-message ${
+                    item.role === "user"
+                      ? "ai-support-user"
+                      : "ai-support-assistant"
+                  }`}
+                >
+                  {item.text}
+                </div>
+              ))}
+
+              {loading && (
+                <div className="ai-support-message ai-support-assistant">
+                  Γράφω την απάντηση...
+                </div>
+              )}
+            </div>
+
+            <form
+              className="ai-support-input"
+              onSubmit={sendMessage}
+            >
+              <textarea
+                value={message}
+                onChange={(event) => setMessage(event.target.value)}
+                onKeyDown={(event) => {
+                  if (
+                    event.key === "Enter" &&
+                    !event.shiftKey
+                  ) {
+                    event.preventDefault();
+                    sendMessage(event);
+                  }
+                }}
+                placeholder="Γράψτε την ερώτησή σας..."
+                rows={2}
+                disabled={loading}
+              />
+
+              <button
+                className="primary-button"
+                type="submit"
+                disabled={loading || !message.trim()}
+              >
+                {loading ? "..." : "Αποστολή"}
+              </button>
+            </form>
+          </div>
+        </section>
+      </main>
+    </CustomerShell>
+  );
 }
