@@ -228,7 +228,6 @@ export function CustomerHome() {
     </>
   );
 
-  if (dashboardMode) return content;
   return <CustomerShell>{content}</CustomerShell>;
 }
 
@@ -966,7 +965,6 @@ export function CustomerBooking({ dashboardMode = false, business: dashboardBusi
     </>
   );
 
-  if (dashboardMode) return content;
   return <CustomerShell>{content}</CustomerShell>;
 }
 
@@ -1098,7 +1096,6 @@ export function CustomerAppointmentsPage() {
     </>
   );
 
-  if (dashboardMode) return content;
   return <CustomerShell>{content}</CustomerShell>;
 }
 
@@ -1232,6 +1229,5 @@ export function CustomerProfile() {
     </>
   );
 
-  if (dashboardMode) return content;
   return <CustomerShell>{content}</CustomerShell>;
 }
