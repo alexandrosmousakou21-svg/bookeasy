@@ -686,6 +686,11 @@ function Overview({ appointments, business, hours }) {
           </Link>
         </section>
       </div>
+      <ProfessionalAI
+        business={business}
+        appointments={appointments}
+        hours={hours}
+      />
       <section className="link-banner">
         <div className="link-art">
           <div>↗</div>
@@ -716,6 +721,110 @@ function Overview({ appointments, business, hours }) {
     </>
   );
 }
+
+function ProfessionalAI({ business, appointments, hours }) {
+  const [message, setMessage] = useState("");
+  const [reply, setReply] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const sendMessage = async (event) => {
+    event?.preventDefault();
+
+    const text = message.trim();
+    if (!text || loading) return;
+
+    setLoading(true);
+    setReply("");
+
+    try {
+      const { data, error } = await supabase.functions.invoke(
+        "ai-assistant",
+        {
+          body: {
+            message: text,
+            business: {
+              ...business,
+              hours: hours?.data || [],
+              appointments: appointments?.data || [],
+            },
+          },
+        },
+      );
+
+      if (error) throw error;
+
+      setReply(data?.reply || "Δεν υπάρχει διαθέσιμη απάντηση.");
+      setMessage("");
+    } catch (error) {
+      setReply("Υπήρξε πρόβλημα με τον AI βοηθό. Δοκιμάστε ξανά.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <section className="professional-ai-card">
+      <div className="professional-ai-header">
+        <div className="professional-ai-icon">
+          <Sparkles size={20} />
+        </div>
+        <div>
+          <span className="eyebrow">AI ΒΟΗΘΟΣ ΕΠΙΧΕΙΡΗΣΗΣ</span>
+          <h2>Ρωτήστε τον AI βοηθό</h2>
+          <p>
+            Ο AI βοηθός γνωρίζει τα στοιχεία της επιχείρησής σας και μπορεί
+            να σας βοηθήσει με τα ραντεβού και τη λειτουργία σας.
+          </p>
+        </div>
+      </div>
+
+      {reply && (
+        <div className="professional-ai-reply">
+          <strong>AI Βοηθός</strong>
+          <p>{reply}</p>
+        </div>
+      )}
+
+      <form className="professional-ai-input" onSubmit={sendMessage}>
+        <input
+          value={message}
+          onChange={(event) => setMessage(event.target.value)}
+          placeholder="π.χ. Πόσα ραντεβού έχω σήμερα;"
+          disabled={loading}
+        />
+        <button
+          className="primary-button"
+          type="submit"
+          disabled={loading || !message.trim()}
+        >
+          {loading ? "..." : "Ρώτησε τον AI"}
+        </button>
+      </form>
+
+      <div className="professional-ai-suggestions">
+        <button
+          type="button"
+          onClick={() => setMessage("Πόσα ραντεβού έχω σήμερα;")}
+        >
+          Ραντεβού σήμερα
+        </button>
+        <button
+          type="button"
+          onClick={() => setMessage("Ποιο είναι το ωράριό μου;")}
+        >
+          Το ωράριό μου
+        </button>
+        <button
+          type="button"
+          onClick={() => setMessage("Δώσε μου μια σύντομη εικόνα της επιχείρησής μου.")}
+        >
+          Εικόνα επιχείρησης
+        </button>
+      </div>
+    </section>
+  );
+}
+
 function AppointmentRow({ appointment }) {
   const name = appointment.customer_name || "Πελάτης";
   return (

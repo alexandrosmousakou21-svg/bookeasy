@@ -82,3 +82,129 @@ textarea:focus {
   border-color: #C9A98F !important;
   color: #5A4638 !important;
 }
+
+/* PROFESSIONAL AI ASSISTANT */
+.professional-ai-card {
+  margin: 24px 0;
+  padding: 24px;
+  background: #FBF7F1;
+  border: 1px solid #E4D5C7;
+  border-radius: 18px;
+  box-shadow: 0 8px 24px rgba(90, 70, 56, 0.06);
+}
+
+.professional-ai-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.professional-ai-icon {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: #C9A98F;
+  color: #5A4638;
+}
+
+.professional-ai-header h2 {
+  margin: 4px 0 6px;
+  color: #5A4638;
+}
+
+.professional-ai-header p {
+  margin: 0;
+  color: #806B5B;
+  line-height: 1.5;
+}
+
+.professional-ai-reply {
+  margin-top: 20px;
+  padding: 16px;
+  background: #FFFFFF;
+  border: 1px solid #E4D5C7;
+  border-radius: 12px;
+  color: #5A4638;
+}
+
+.professional-ai-reply strong {
+  display: block;
+  margin-bottom: 6px;
+}
+
+.professional-ai-reply p {
+  margin: 0;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
+.professional-ai-input {
+  display: flex;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.professional-ai-input input {
+  flex: 1;
+  min-width: 0;
+  height: 48px;
+  padding: 0 14px;
+  border: 1px solid #E4D5C7;
+  border-radius: 10px;
+  background: #FFFFFF;
+  color: #5A4638;
+  font: inherit;
+  outline: none;
+}
+
+.professional-ai-input input:focus {
+  border-color: #C9A98F;
+}
+
+.professional-ai-input .primary-button {
+  white-space: nowrap;
+}
+
+.professional-ai-input .primary-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.professional-ai-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.professional-ai-suggestions button {
+  padding: 8px 12px;
+  border: 1px solid #E4D5C7;
+  border-radius: 9px;
+  background: #FFFFFF;
+  color: #5A4638;
+  cursor: pointer;
+  font: inherit;
+}
+
+.professional-ai-suggestions button:hover {
+  background: #F6EFE6;
+  border-color: #C9A98F;
+}
+
+@media (max-width: 700px) {
+  .professional-ai-card {
+    padding: 18px;
+  }
+
+  .professional-ai-input {
+    flex-direction: column;
+  }
+
+  .professional-ai-input .primary-button {
+    width: 100%;
+  }
+}
