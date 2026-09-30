@@ -128,3 +128,49 @@ textarea:focus {
   outline: none;
   box-shadow: 0 0 0 3px rgba(201,169,143,.18);
 }
+
+/* FINAL CUSTOMER / PUBLIC BUTTON THEME */
+.customer-page .primary-button,
+.customer-page .primary-button.full,
+.customer-page .primary-button.compact,
+.public-page .primary-button,
+.public-page .primary-button.full,
+.public-page .primary-button.compact,
+.customer-booking-layout .booking-card .primary-button,
+.public-booking-cta {
+  background: #C9A98F !important;
+  border-color: #C9A98F !important;
+  color: #5A4638 !important;
+  border-radius: 10px !important;
+}
+
+.customer-page .primary-button:hover,
+.public-page .primary-button:hover,
+.customer-booking-layout .booking-card .primary-button:hover,
+.public-booking-cta:hover {
+  background: #B99175 !important;
+  border-color: #B99175 !important;
+  color: #FFFFFF !important;
+}
+
+.customer-page .outline-button,
+.public-page .outline-button {
+  background: #FBF7F1 !important;
+  border-color: #E4D5C7 !important;
+  color: #5A4638 !important;
+  border-radius: 10px !important;
+}
+
+.customer-page .outline-button:hover,
+.public-page .outline-button:hover {
+  background: #F6EFE6 !important;
+  border-color: #C9A98F !important;
+  color: #5A4638 !important;
+}
+
+.customer-page .slot-grid button.selected,
+.customer-page .slot-grid button:hover {
+  background: #C9A98F !important;
+  border-color: #C9A98F !important;
+  color: #5A4638 !important;
+}

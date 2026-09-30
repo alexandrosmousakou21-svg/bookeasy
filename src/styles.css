@@ -50,3 +50,37 @@ textarea:focus {
   outline: none;
   box-shadow: 0 0 0 3px rgba(201,169,143,.18);
 }
+
+/* FINAL GLOBAL BOOKEasy THEME */
+.primary-button,
+.primary-button.compact,
+.primary-button.full,
+.outline-button,
+.customer-profile-form button {
+  background: #C9A98F !important;
+  color: #5A4638 !important;
+  border: 1px solid #C9A98F !important;
+  border-radius: 10px !important;
+  box-shadow: none !important;
+}
+
+.primary-button:hover,
+.primary-button.compact:hover,
+.primary-button.full:hover,
+.customer-profile-form button:hover {
+  background: #B99175 !important;
+  color: #FFFFFF !important;
+  border-color: #B99175 !important;
+}
+
+.outline-button {
+  background: #FBF7F1 !important;
+  color: #5A4638 !important;
+  border-color: #E4D5C7 !important;
+}
+
+.outline-button:hover {
+  background: #F6EFE6 !important;
+  color: #5A4638 !important;
+  border-color: #C9A98F !important;
+}
