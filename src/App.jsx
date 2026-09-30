@@ -1864,7 +1864,7 @@ function AuthPage({ mode, customer = false }) {
         });
       if (businessError) setError(errorText(businessError));
       else navigate("/dashboard");
-    } else navigate(customer ? "/my-appointments" : "/dashboard");
+    } else navigate(customer ? "/customer" : "/dashboard");
     setLoading(false);
   };
   const authPath = customer ? "/customer-" : "/";
