@@ -155,23 +155,6 @@ export function CustomerHome() {
     : businesses;
   const content = (
     <>
-      {fromDashboard && (
-        <div style={{ padding: "16px" }}>
-          <button
-            onClick={() => navigate("/dashboard")}
-            style={{
-              padding: "10px 14px",
-              borderRadius: "10px",
-              border: "1px solid #ddd",
-              background: "#fff",
-              cursor: "pointer",
-              fontWeight: 600
-            }}
-          >
-            ← Πίσω στο Dashboard
-          </button>
-        </div>
-      )}
       <main className="customer-home">
         <section className="customer-hero">
           <span className="eyebrow">BOOKEASY</span>
