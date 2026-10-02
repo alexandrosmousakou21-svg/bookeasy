@@ -334,6 +334,7 @@ const navItems = [
   ["/dashboard/services", "Υπηρεσίες", Scissors],
   ["/dashboard/staff", "Ομάδα", UserRound],
   ["/dashboard/profile", "Προφίλ επιχείρησης", Sparkles],
+  ["/dashboard/ai", "Εξυπηρέτηση Πελατών & AI", Sparkles],
   ["/dashboard/settings", "Ρυθμίσεις", Settings],
 ];
 function Dashboard({
@@ -477,6 +478,7 @@ function Dashboard({
             />
             <Route path="services" element={<Services business={business} />} />
             <Route path="staff" element={<Staff business={business} />} />
+            <Route path="ai" element={<AIAssistant business={business} />} />
             <Route
               path="profile"
               element={<CustomerBooking dashboardMode={true} business={business} />}
@@ -1023,6 +1025,27 @@ function Editor({ title, value, fields, onClose, onSave }) {
     </div>
   );
 }
+function AIAssistant({ business }) {
+  return (
+    <div>
+      <PageHeader
+        eyebrow="BOOKEASY AI"
+        title="Εξυπηρέτηση Πελατών & AI"
+        subtitle="Διαχειρίσου τον AI βοηθό που εξυπηρετεί τους πελάτες της επιχείρησής σου."
+      />
+      <div className="card" style={{ marginTop: 24 }}>
+        <h3>🤖 AI Βοηθός</h3>
+        <p style={{ marginTop: 8 }}>
+          Ο AI βοηθός μπορεί να απαντά στις ερωτήσεις των πελατών σου σχετικά με την επιχείρηση, τις υπηρεσίες και τα ραντεβού.
+        </p>
+        <div style={{ marginTop: 20 }}>
+          <strong>{business?.name}</strong>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Services({ business }) {
   const store = useData("services", business.id, { order: "name" });
   const [editing, setEditing] = useState(null);
