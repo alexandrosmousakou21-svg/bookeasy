@@ -2,4 +2,6 @@
 .env.local
 .env.*.local
 node_modules/
+dist/
+.vercel
 dist/supabase/.temp/
