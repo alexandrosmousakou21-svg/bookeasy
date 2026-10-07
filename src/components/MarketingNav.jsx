@@ -4,7 +4,7 @@ import { Menu, X } from "lucide-react";
 
 const ITEMS = [
   ["Αρχική", "/"],
-  ["Πώς λειτουργεί", "/#how"],
+  ["Πώς λειτουργεί", "/#how-it-works"],
   ["Για επαγγελματίες", "/#professionals"],
   ["Για πελάτες", "/#customers"],
   ["Τιμές", "/#pricing"],

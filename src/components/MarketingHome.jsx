@@ -84,17 +84,17 @@ export default function MarketingHome() {
           <Link className="primary-button" to="/install">
             Κατέβασε το BookEasy App
           </Link>
-          <a className="outline-button" href="#how">
+          <a className="outline-button" href="#how-it-works">
             Δες πώς λειτουργεί
           </a>
         </div>
       </section>
 
-      <section className="mk-section" id="how">
+      <section className="mk-section" id="how-it-works">
         <h2>Πώς λειτουργεί</h2>
         <p>
           Ο επαγγελματίας ρυθμίζει υπηρεσίες και ωράριο, ο πελάτης κλείνει
-          ραντεβού online και και οι δύο ενημερώνονται αυτόματα.
+          ραντεβού online και οι δύο ενημερώνονται αυτόματα.
         </p>
       </section>
 

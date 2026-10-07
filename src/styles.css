@@ -121,3 +121,4 @@ textarea:focus {
 .mk-nav nav a{padding:0;font-size:12px}
 .mk-nav-cta{margin-left:0}
 }
+.mk-section,.mk-install{scroll-margin-top:72px}
