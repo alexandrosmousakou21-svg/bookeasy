@@ -22,7 +22,9 @@ import {
   Menu,
   Plus,
   Scissors,
+  Search,
   Settings,
+  SlidersHorizontal,
   Sparkles,
   Trash2,
   UserRound,
@@ -456,7 +458,9 @@ function Dashboard({
             />
             <Route
               path="appointments"
-              element={<Appointments appointments={appointments} />}
+              element={
+                <Appointments appointments={appointments} business={business} />
+              }
             />
             <Route
               path="customers"
@@ -980,58 +984,68 @@ function AppointmentRow({ appointment }) {
     </div>
   );
 }
+const localKey = (date) =>
+  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+const startOfDay = (date) => {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  return d;
+};
+const mondayOf = (date) => {
+  const d = startOfDay(date);
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+  return d;
+};
+
 function Calendar({ appointments }) {
-  const [weekStart, setWeekStart] = useState(() => {
-    const start = new Date();
-    start.setHours(0, 0, 0, 0);
-    start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
-    return start;
-  });
+  const [selected, setSelected] = useState(() => startOfDay(new Date()));
+  const weekStart = mondayOf(selected);
   const weekDays = Array.from({ length: 7 }, (_, index) => {
     const day = new Date(weekStart);
     day.setDate(day.getDate() + index);
     return day;
   });
-  const shiftWeek = (amount) => {
-    const next = new Date(weekStart);
-    next.setDate(next.getDate() + amount * 7);
-    setWeekStart(next);
+  const shiftDays = (amount) => {
+    const next = new Date(selected);
+    next.setDate(next.getDate() + amount);
+    setSelected(next);
   };
-  const resetWeek = () => {
-    const start = new Date();
-    start.setHours(0, 0, 0, 0);
-    start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
-    setWeekStart(start);
-  };
+  const shiftWeek = (amount) => shiftDays(amount * 7);
+  const resetWeek = () => setSelected(startOfDay(new Date()));
   const isCurrentWeek = weekDays.some(
     (day) => day.toDateString() === new Date().toDateString(),
   );
+  const selectedKey = localKey(selected);
+  const dayItems = appointments.data
+    .filter((item) => item.appointment_date === selectedKey)
+    .sort((x, y) => String(x.starts_at).localeCompare(String(y.starts_at)));
   return (
     <>
-      <PageHeader
-        eyebrow="ΗΜΕΡΟΛΟΓΙΟ"
-        title="Το ημερολόγιό σας"
-        subtitle="Δείτε και διαχειριστείτε όλα τα ραντεβού σας."
-      />
-      <div className="calendar-toolbar">
-        <button className="icon-button" onClick={() => shiftWeek(-1)}>
-          <ChevronLeft size={18} />
-        </button>
-        <strong>
-          {isCurrentWeek
-            ? "Αυτή η εβδομάδα"
-            : `${weekDays[0].toLocaleDateString("el-GR", { day: "numeric", month: "short" })} – ${weekDays[6].toLocaleDateString("el-GR", { day: "numeric", month: "short" })}`}
-        </strong>
-        <button className="icon-button" onClick={() => shiftWeek(1)}>
-          <ChevronRight size={18} />
-        </button>
-        <button className="outline-button today" onClick={resetWeek}>
-          Σήμερα
-        </button>
-      </div>
-      <section className="panel calendar-panel">
-        <div className="week-grid">
-          {weekDays.map((day) => (
+      <div className="dx-desktop-only">
+        <PageHeader
+          eyebrow="ΗΜΕΡΟΛΟΓΙΟ"
+          title="Το ημερολόγιό σας"
+          subtitle="Δείτε και διαχειριστείτε όλα τα ραντεβού σας."
+        />
+        <div className="calendar-toolbar">
+          <button className="icon-button" onClick={() => shiftWeek(-1)}>
+            <ChevronLeft size={18} />
+          </button>
+          <strong>
+            {isCurrentWeek
+              ? "Αυτή η εβδομάδα"
+              : `${weekDays[0].toLocaleDateString("el-GR", { day: "numeric", month: "short" })} – ${weekDays[6].toLocaleDateString("el-GR", { day: "numeric", month: "short" })}`}
+          </strong>
+          <button className="icon-button" onClick={() => shiftWeek(1)}>
+            <ChevronRight size={18} />
+          </button>
+          <button className="outline-button today" onClick={resetWeek}>
+            Σήμερα
+          </button>
+        </div>
+        <section className="panel calendar-panel">
+          <div className="week-grid">
+            {weekDays.map((day) => (
               <div
                 className={
                   day.toDateString() === new Date().toDateString()
@@ -1046,46 +1060,144 @@ function Calendar({ appointments }) {
                 <span>{day.getDate()}</span>
               </div>
             ))}
+          </div>
+          <div className="calendar-body">
+            {appointments.data
+              .filter((appointment) =>
+                weekDays.some(
+                  (day) =>
+                    appointment.appointment_date ===
+                    day.toISOString().slice(0, 10),
+                ),
+              )
+              .map((appointment) => {
+                const column = weekDays.findIndex(
+                  (day) =>
+                    appointment.appointment_date ===
+                    day.toISOString().slice(0, 10),
+                );
+                return (
+                  <div
+                    key={appointment.id}
+                    className="calendar-event"
+                    style={{ gridColumn: column + 1 }}
+                  >
+                    <b>
+                      {new Date(appointment.starts_at).toLocaleTimeString("el-GR", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </b>
+                    <span>{appointment.customer_name}</span>
+                    <small>{appointment.service?.name || "Υπηρεσία"}</small>
+                  </div>
+                );
+              })}
+          </div>
+        </section>
+      </div>
+
+      <div className="dx-mobile-only dx-agenda">
+        <div className="dx-page-head">
+          <div>
+            <h1>Ημερολόγιο</h1>
+            <p>
+              {selected.toLocaleDateString("el-GR", {
+                month: "long",
+                year: "numeric",
+              })}
+            </p>
+          </div>
+          <button className="dx-chip" onClick={resetWeek}>
+            Σήμερα
+          </button>
         </div>
-        <div className="calendar-body">
-          {appointments.data
-            .filter((appointment) =>
-              weekDays.some(
-                (day) =>
-                  appointment.appointment_date ===
-                  day.toISOString().slice(0, 10),
-              ),
-            )
-            .map((appointment) => {
-              const column = weekDays.findIndex(
-                (day) =>
-                  appointment.appointment_date ===
-                  day.toISOString().slice(0, 10),
-              );
-              return (
-                <div
-                  key={appointment.id}
-                  className="calendar-event"
-                  style={{ gridColumn: column + 1 }}
-                >
-                  <b>
-                    {new Date(appointment.starts_at).toLocaleTimeString("el-GR", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </b>
-                  <span>{appointment.customer_name}</span>
-                  <small>{appointment.service?.name || "Υπηρεσία"}</small>
-                </div>
-              );
+        <div className="dx-daynav">
+          <button aria-label="Προηγούμενη ημέρα" onClick={() => shiftDays(-1)}>
+            <ChevronLeft size={22} />
+          </button>
+          <strong>
+            {selected.toLocaleDateString("el-GR", {
+              weekday: "long",
+              day: "numeric",
+              month: "long",
             })}
+          </strong>
+          <button aria-label="Επόμενη ημέρα" onClick={() => shiftDays(1)}>
+            <ChevronRight size={22} />
+          </button>
         </div>
-      </section>
+        <div className="dx-weekstrip">
+          {weekDays.map((day) => {
+            const key = localKey(day);
+            const count = appointments.data.filter(
+              (item) => item.appointment_date === key,
+            ).length;
+            return (
+              <button
+                key={key}
+                className={key === selectedKey ? "on" : ""}
+                onClick={() => setSelected(day)}
+                aria-label={day.toLocaleDateString("el-GR", {
+                  weekday: "long",
+                  day: "numeric",
+                  month: "long",
+                })}
+              >
+                <span>
+                  {day.toLocaleDateString("el-GR", { weekday: "narrow" })}
+                </span>
+                <b>{day.getDate()}</b>
+                <i className={count ? "has" : ""} />
+              </button>
+            );
+          })}
+        </div>
+        {appointments.loading ? (
+          <Loading />
+        ) : appointments.error ? (
+          <div className="dx-empty">
+            <strong>Δεν φορτώθηκαν τα ραντεβού</strong>
+            <p>{appointments.error}</p>
+          </div>
+        ) : dayItems.length === 0 ? (
+          <div className="dx-empty">
+            <strong>Ελεύθερη ημέρα</strong>
+            <p>Δεν υπάρχουν ραντεβού για αυτή την ημέρα.</p>
+          </div>
+        ) : (
+          <div className="dx-timeline">
+            {dayItems.map((item) => (
+              <div className={`dx-slot ${item.status}`} key={item.id}>
+                <time>{timeOf(item.starts_at)}</time>
+                <div className="dx-slot-card">
+                  <div className="row">
+                    <strong>{item.customer_name || "Πελάτης"}</strong>
+                    <span className={`dx-pill ${item.status}`}>
+                      {statusLabels[item.status] || statusLabels.confirmed}
+                    </span>
+                  </div>
+                  <span className="sub">
+                    {item.service?.name || "Υπηρεσία"}
+                    {item.service?.duration_minutes
+                      ? ` · ${item.service.duration_minutes}′`
+                      : ""}
+                    {item.staff?.name ? ` · ${item.staff.name}` : ""}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </>
   );
 }
-function Appointments({ appointments }) {
+function Appointments({ appointments, business }) {
   const [view, setView] = useState("today");
+  const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [filterOpen, setFilterOpen] = useState(false);
   const update = async (id, status) => {
     if (supabase) {
       const { error } = await supabase
@@ -1102,8 +1214,43 @@ function Appointments({ appointments }) {
   const visibleAppointments = appointments.data.filter((item) => {
     const appointmentDate = new Date(item.starts_at);
     appointmentDate.setHours(0, 0, 0, 0);
-    return view === "history" ? appointmentDate < today : appointmentDate >= today;
+    const inView =
+      view === "history" ? appointmentDate < today : appointmentDate >= today;
+    const needle = query.trim().toLowerCase();
+    const matchesQuery =
+      !needle ||
+      [item.customer_name, item.service?.name, item.staff?.name].some((v) =>
+        String(v || "").toLowerCase().includes(needle),
+      );
+    const matchesStatus = statusFilter === "all" || item.status === statusFilter;
+    return inView && matchesQuery && matchesStatus;
   });
+  const sortedVisible = [...visibleAppointments].sort((x, y) =>
+    view === "history"
+      ? String(y.starts_at).localeCompare(String(x.starts_at))
+      : String(x.starts_at).localeCompare(String(y.starts_at)),
+  );
+  const todayKey = localKey(today);
+  const groups =
+    view === "history"
+      ? [["Παλαιότερα", sortedVisible]]
+      : [
+          [
+            "Σήμερα",
+            sortedVisible.filter((i) => localKey(new Date(i.starts_at)) === todayKey),
+          ],
+          [
+            "Επόμενα",
+            sortedVisible.filter((i) => localKey(new Date(i.starts_at)) !== todayKey),
+          ],
+        ];
+  const filterOptions = [
+    ["all", "Όλα"],
+    ["pending", "Σε αναμονή"],
+    ["confirmed", "Επιβεβαιωμένα"],
+    ["completed", "Ολοκληρωμένα"],
+    ["cancelled", "Ακυρωμένα"],
+  ];
 
   const remove = async (id) => {
     if (supabase) {
@@ -1117,6 +1264,141 @@ function Appointments({ appointments }) {
   };
   return (
     <>
+      <div className="dx-mobile-only dx-appts">
+        <div className="dx-page-head">
+          <div>
+            <h1>Ραντεβού</h1>
+            <p>
+              {view === "history"
+                ? "Παλαιότερα ραντεβού"
+                : today.toLocaleDateString("el-GR", {
+                    weekday: "long",
+                    day: "numeric",
+                    month: "long",
+                  })}
+            </p>
+          </div>
+          {business?.slug && (
+            <Link className="dx-chip primary" to={`/b/${business.slug}`}>
+              <Plus size={16} /> Νέο
+            </Link>
+          )}
+        </div>
+        <div className="dx-segment">
+          <button className={view === "today" ? "on" : ""} onClick={() => setView("today")}>
+            Σήμερα & επόμενα
+          </button>
+          <button className={view === "history" ? "on" : ""} onClick={() => setView("history")}>
+            Ιστορικό
+          </button>
+        </div>
+        <div className="dx-searchrow">
+          <label className="dx-search">
+            <Search size={18} />
+            <input
+              type="search"
+              placeholder="Αναζήτηση πελάτη ή υπηρεσίας"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+          </label>
+          <button
+            className={`dx-filterbtn ${statusFilter !== "all" ? "on" : ""}`}
+            onClick={() => setFilterOpen(true)}
+            aria-label="Φίλτρα"
+          >
+            <SlidersHorizontal size={20} />
+          </button>
+        </div>
+        {appointments.loading ? (
+          <Loading />
+        ) : appointments.error ? (
+          <div className="dx-empty">
+            <strong>Δεν φορτώθηκαν τα ραντεβού</strong>
+            <p>{appointments.error}</p>
+          </div>
+        ) : sortedVisible.length === 0 ? (
+          <div className="dx-empty">
+            <strong>Δεν βρέθηκαν ραντεβού</strong>
+            <p>Δοκιμάστε άλλη αναζήτηση ή φίλτρο.</p>
+          </div>
+        ) : (
+          groups
+            .filter(([, list]) => list.length)
+            .map(([title, list]) => (
+              <section className="dx-group" key={title}>
+                <h2>
+                  {title} <span>{list.length}</span>
+                </h2>
+                <div className="dx-list">
+                  {list.map((item) => (
+                    <article className="dx-acard" key={item.id}>
+                      <div className="top">
+                        <time>
+                          {timeOf(item.starts_at)}
+                          {view === "history" || title === "Επόμενα" ? (
+                            <small>
+                              {new Date(item.starts_at).toLocaleDateString("el-GR", {
+                                day: "numeric",
+                                month: "short",
+                              })}
+                            </small>
+                          ) : null}
+                        </time>
+                        <span className={`dx-pill ${item.status}`}>
+                          {statusLabels[item.status] || item.status}
+                        </span>
+                      </div>
+                      <strong>{item.customer_name || "Πελάτης"}</strong>
+                      <span className="sub">
+                        {item.service?.name || "Υπηρεσία"}
+                        {item.staff?.name ? ` · ${item.staff.name}` : ""}
+                      </span>
+                      <div className="acts">
+                        <button onClick={() => update(item.id, "confirmed")}>
+                          ✓ Επιβεβαίωση
+                        </button>
+                        <button onClick={() => update(item.id, "completed")}>
+                          ○ Ολοκλήρωση
+                        </button>
+                        <button
+                          className="danger"
+                          aria-label="Διαγραφή"
+                          onClick={() => remove(item.id)}
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </section>
+            ))
+        )}
+      </div>
+      {filterOpen && (
+        <>
+          <div className="dx-sheet-backdrop" onClick={() => setFilterOpen(false)} />
+          <div className="dx-sheet" role="dialog" aria-label="Φίλτρα">
+            <div className="grab" />
+            <h3>Κατάσταση</h3>
+            {filterOptions.map(([value, label]) => (
+              <button
+                key={value}
+                className={statusFilter === value ? "sel" : ""}
+                onClick={() => {
+                  setStatusFilter(value);
+                  setFilterOpen(false);
+                }}
+              >
+                {label}
+                {statusFilter === value && <span>✓</span>}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+      <div className="dx-desktop-only">
       <PageHeader
         eyebrow="ΡΑΝΤΕΒΟΥ"
         title="Όλα τα ραντεβού"
@@ -1195,10 +1477,10 @@ function Appointments({ appointments }) {
           </tbody>
         </table>
       </section>
+      </div>
     </>
   );
 }
-
 function Editor({ title, value, fields, onClose, onSave }) {
   const [form, setForm] = useState(value);
   return (
