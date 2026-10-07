@@ -729,7 +729,7 @@ function DashboardHome({
 }
 
 function Overview({ appointments, business, hours }) {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localKey(new Date());
   const todayItems = appointments.data.filter(
     (appointment) => appointment.appointment_date === today,
   );
@@ -986,6 +986,8 @@ function AppointmentRow({ appointment }) {
 }
 const localKey = (date) =>
   `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+const apptDay = (item) =>
+  item.appointment_date || localKey(new Date(item.starts_at));
 const startOfDay = (date) => {
   const d = new Date(date);
   d.setHours(0, 0, 0, 0);
@@ -1017,7 +1019,7 @@ function Calendar({ appointments }) {
   );
   const selectedKey = localKey(selected);
   const dayItems = appointments.data
-    .filter((item) => item.appointment_date === selectedKey)
+    .filter((item) => apptDay(item) === selectedKey)
     .sort((x, y) => String(x.starts_at).localeCompare(String(y.starts_at)));
   return (
     <>
@@ -1066,15 +1068,13 @@ function Calendar({ appointments }) {
               .filter((appointment) =>
                 weekDays.some(
                   (day) =>
-                    appointment.appointment_date ===
-                    day.toISOString().slice(0, 10),
+                    apptDay(appointment) === localKey(day),
                 ),
               )
               .map((appointment) => {
                 const column = weekDays.findIndex(
                   (day) =>
-                    appointment.appointment_date ===
-                    day.toISOString().slice(0, 10),
+                    apptDay(appointment) === localKey(day),
                 );
                 return (
                   <div
@@ -1131,7 +1131,7 @@ function Calendar({ appointments }) {
           {weekDays.map((day) => {
             const key = localKey(day);
             const count = appointments.data.filter(
-              (item) => item.appointment_date === key,
+              (item) => apptDay(item) === key,
             ).length;
             return (
               <button
@@ -1212,8 +1212,7 @@ function Appointments({ appointments, business }) {
   today.setHours(0, 0, 0, 0);
 
   const visibleAppointments = appointments.data.filter((item) => {
-    const appointmentDate = new Date(item.starts_at);
-    appointmentDate.setHours(0, 0, 0, 0);
+    const appointmentDate = new Date(`${apptDay(item)}T00:00:00`);
     const inView =
       view === "history" ? appointmentDate < today : appointmentDate >= today;
     const needle = query.trim().toLowerCase();
@@ -1237,11 +1236,11 @@ function Appointments({ appointments, business }) {
       : [
           [
             "Σήμερα",
-            sortedVisible.filter((i) => localKey(new Date(i.starts_at)) === todayKey),
+            sortedVisible.filter((i) => apptDay(i) === todayKey),
           ],
           [
             "Επόμενα",
-            sortedVisible.filter((i) => localKey(new Date(i.starts_at)) !== todayKey),
+            sortedVisible.filter((i) => apptDay(i) !== todayKey),
           ],
         ];
   const filterOptions = [
