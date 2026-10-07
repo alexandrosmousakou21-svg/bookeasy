@@ -8,6 +8,8 @@ import {
   useNavigate,
   useParams,
 } from "react-router-dom";
+import MarketingHome from "./components/MarketingHome";
+import InstallPage from "./components/InstallPage";
 import {
   CalendarDays,
   ChevronDown,
@@ -245,6 +247,7 @@ function App() {
   return (
     <Routes>
       <Route path="/" element={<HomePage />} />
+      <Route path="/install" element={<InstallPage />} />
       <Route path="/login" element={<AuthPage mode="login" />} />
       <Route path="/register" element={<AuthPage mode="register" />} />
       <Route path="/customer" element={<CustomerHome />} />
@@ -279,40 +282,7 @@ function App() {
   );
 }
 function HomePage() {
-  return (
-    <div className="auth-layout">
-      <div className="auth-aside">
-        <Link className="brand light" to="/">
-          <span className="brand-mark">B</span>
-          <span>
-            book<span>easy</span>
-          </span>
-        </Link>
-        <div>
-          <span className="eyebrow">BOOKEASY</span>
-          <h1>Η Νο1 εφαρμογή κρατήσεων</h1>
-          <p>
-            Κλείσε εύκολα το επόμενο ραντεβού σου ή διαχειρίσου την επιχείρησή
-            σου μέσα από μία απλή και σύγχρονη πλατφόρμα.
-          </p>
-        </div>
-        <small>© 2025 BookEasy</small>
-      </div>
-      <div className="auth-form-wrap">
-        <div className="auth-form">
-          <span className="eyebrow">ΚΑΛΩΣ ΗΡΘΑΤΕ ΣΤΟ BOOKEASY</span>
-          <h2>Πώς θέλετε να συνεχίσετε;</h2>
-          <p>Επιλέξτε τον λογαριασμό που θέλετε να χρησιμοποιήσετε.</p>
-          <Link className="primary-button full" to="/customer-login">
-            Είμαι Πελάτης <ChevronRight size={17} />
-          </Link>
-          <Link className="outline-button full" to="/login">
-            Είμαι Επαγγελματίας <ChevronRight size={17} />
-          </Link>
-        </div>
-      </div>
-    </div>
-  );
+  return <MarketingHome />;
 }
 function NavigateHome({ user }) {
   const navigate = useNavigate();

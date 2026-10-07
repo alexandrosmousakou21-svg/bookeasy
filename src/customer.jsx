@@ -854,6 +854,15 @@ export function CustomerBooking({ dashboardMode = false, business: dashboardBusi
               <Link className="outline-button" to="/my-appointments">
                 Τα ραντεβού μου
               </Link>
+              <div className="booking-install-cta">
+                <p>
+                  Διαχειρίσου τα ραντεβού σου και λάβε ειδοποιήσεις πιο εύκολα
+                  μέσα από την εφαρμογή.
+                </p>
+                <Link className="primary-button" to="/install">
+                  Κατέβασε το BookEasy App
+                </Link>
+              </div>
             </div>
           ) : (
             <>

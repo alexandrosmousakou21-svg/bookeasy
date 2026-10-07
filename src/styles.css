@@ -84,3 +84,40 @@ textarea:focus {
   color: #5A4638 !important;
   border-color: #C9A98F !important;
 }
+
+.mk-page{min-height:100vh;background:#F6EFE6}
+.mk-nav{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:14px;padding:12px 16px;background:#FFFFFF;border-bottom:1px solid var(--line)}
+.mk-nav nav{display:none;position:absolute;top:100%;left:0;right:0;flex-direction:column;background:#FFFFFF;padding:12px 16px;border-bottom:1px solid var(--line)}
+.mk-nav nav.open{display:flex}
+.mk-nav nav a{padding:10px 4px;font-size:13px;font-weight:600}
+.mk-nav-cta{margin-left:auto}
+.mk-burger{display:grid}
+.mk-hero,.mk-section,.mk-install{max-width:1060px;margin:0 auto;padding:48px 20px;text-align:center}
+.mk-hero h1{font:800 clamp(30px,6vw,52px) Manrope,sans-serif;letter-spacing:-1.5px;margin:14px 0}
+.mk-hero p,.mk-section>p,.mk-install p{color:var(--muted);max-width:620px;margin:0 auto 22px;line-height:1.6}
+.mk-logo{width:56px;height:56px;margin:0 auto 14px;font-size:26px}
+.mk-section h2,.mk-install h2{font:800 clamp(24px,4vw,34px) Manrope,sans-serif;margin:0 0 18px}
+.mk-buttons{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:18px}
+.mk-grid{display:grid;grid-template-columns:1fr;gap:14px;text-align:left}
+.mk-card p{color:var(--muted);font-size:13px;margin:8px 0 0}
+.mk-card .primary-button{margin-top:14px}
+.mk-note{font-size:12px}
+.mk-faq{max-width:720px;margin:0 auto;text-align:left}
+.mk-faq details{background:#FFFFFF;border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:10px}
+.mk-faq summary{cursor:pointer;font-weight:700;font-size:14px}
+.mk-faq p{color:var(--muted);font-size:13px;margin:10px 0 0}
+.mk-install{background:#5A4638;color:#FFFFFF;border-radius:16px;margin:24px auto;max-width:1020px}
+.mk-install p{color:#DCC8B5}
+.mk-install .outline-button,.mk-install .primary-button{min-height:44px}
+.mk-install small{display:block;margin-top:16px;color:#DCC8B5}
+.mk-footer{display:flex;justify-content:space-between;padding:24px 20px;max-width:1060px;margin:0 auto;font-size:12px}
+.booking-install-cta{margin-top:22px;padding-top:18px;border-top:1px solid var(--line);font-size:12px}
+.booking-install-cta p{margin:0 0 10px}
+@media(min-width:900px){
+.mk-grid{grid-template-columns:repeat(4,1fr)}
+.mk-burger{display:none}
+.mk-nav{padding:12px max(24px,calc((100vw - 1160px)/2))}
+.mk-nav nav{display:flex;position:static;flex-direction:row;gap:14px;padding:0;border:0;margin-left:auto}
+.mk-nav nav a{padding:0;font-size:12px}
+.mk-nav-cta{margin-left:0}
+}
