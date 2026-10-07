@@ -348,7 +348,7 @@ function Dashboard({
       </div>
     );
   return (
-    <div className="app-shell">
+    <div className="app-shell dx-shell">
       <aside className={`sidebar ${sidebarOpen ? "open" : ""}`}>
         <div className="sidebar-top">
           <Link className="brand" to="/dashboard">
@@ -406,6 +406,15 @@ function Dashboard({
         </div>
       </aside>
       <main className="main-content">
+        <div className="dx-mobile-bar">
+          <div className="name">
+            <span className="dx-dot" aria-label="Συνδεδεμένο" />
+            <strong>{business.name}</strong>
+          </div>
+          <Link className="dx-add" to={`/b/${business.slug}`}>
+            <Plus size={16} /> <span>Νέο ραντεβού</span>
+          </Link>
+        </div>
         <header className="topbar">
           <button
             className="icon-button mobile-only"
@@ -468,7 +477,67 @@ function Dashboard({
           </Routes>
         </div>
       </main>
+      <MobileNav business={business} logout={logout} />
     </div>
+  );
+}
+
+function MobileNav({ business, logout }) {
+  const [open, setOpen] = useState(false);
+  const location = useLocation();
+  useEffect(() => setOpen(false), [location.pathname]);
+  const tabs = [
+    ["/dashboard", "Αρχική", LayoutDashboard, true],
+    ["/dashboard/appointments", "Ραντεβού", Clock3],
+    ["/dashboard/customers", "Πελάτες", Users],
+    ["/dashboard/services", "Υπηρεσίες", Scissors],
+  ];
+  const moreActive = [
+    "/dashboard/calendar",
+    "/dashboard/staff",
+    "/dashboard/profile",
+    "/dashboard/settings",
+  ].includes(location.pathname);
+  return (
+    <>
+      <nav className="dx-bottom-nav" aria-label="Κύρια πλοήγηση">
+        {tabs.map(([to, label, Icon, end]) => (
+          <NavLink
+            key={to}
+            to={to}
+            end={Boolean(end)}
+            className={({ isActive }) => (isActive ? "active" : "")}
+          >
+            <Icon size={21} />
+            {label}
+          </NavLink>
+        ))}
+        <button
+          className={moreActive || open ? "active" : ""}
+          onClick={() => setOpen(true)}
+          aria-haspopup="dialog"
+        >
+          <Menu size={21} />
+          Περισσότερα
+        </button>
+      </nav>
+      {open && (
+        <>
+          <div className="dx-sheet-backdrop" onClick={() => setOpen(false)} />
+          <div className="dx-sheet" role="dialog" aria-label="Περισσότερα">
+            <div className="grab" />
+            <Link to="/dashboard/calendar"><CalendarDays size={20} /> Ημερολόγιο</Link>
+            <Link to="/dashboard/staff"><UserRound size={20} /> Ομάδα</Link>
+            <Link to="/dashboard/profile"><Sparkles size={20} /> Προφίλ επιχείρησης</Link>
+            <Link to="/dashboard/settings"><Settings size={20} /> Ρυθμίσεις</Link>
+            <Link to={`/b/${business.slug}`}><ChevronRight size={20} /> Δημόσια σελίδα</Link>
+            <button className="danger" onClick={logout}>
+              <LogOut size={20} /> Αποσύνδεση
+            </button>
+          </div>
+        </>
+      )}
+    </>
   );
 }
 
@@ -510,12 +579,156 @@ function StatCard({ icon: Icon, label, value, trend, tone }) {
     </article>
   );
 }
+const statusLabels = {
+  pending: "Σε αναμονή",
+  completed: "Ολοκληρωμένο",
+  cancelled: "Ακυρωμένο",
+  confirmed: "Επιβεβαιωμένο",
+};
+const timeOf = (iso) =>
+  new Date(iso).toLocaleTimeString("el-GR", { hour: "2-digit", minute: "2-digit" });
+
+function DashboardHome({
+  business,
+  appointments,
+  todayItems,
+  weekCount,
+  customerCount,
+  serviceCount,
+  onShare,
+  copied,
+}) {
+  const now = Date.now();
+  const sorted = [...todayItems].sort((x, y) =>
+    String(x.starts_at).localeCompare(String(y.starts_at)),
+  );
+  const next = [...appointments.data]
+    .filter(
+      (item) =>
+        item.status !== "cancelled" && new Date(item.starts_at).getTime() >= now,
+    )
+    .sort((x, y) => String(x.starts_at).localeCompare(String(y.starts_at)))[0];
+  const newUrl = `/b/${business.slug}`;
+  return (
+    <div className="dx-home">
+      <section className="dx-hero">
+        <small>Καλημέρα</small>
+        <h1>{business.name}</h1>
+        <div className="dx-hero-row">
+          <div>
+            <div className="dx-big">{todayItems.length}</div>
+            <div className="dx-big-label">σημερινά ραντεβού</div>
+          </div>
+          <Link className="dx-cta" to={newUrl}>
+            <Plus size={18} /> Νέο ραντεβού
+          </Link>
+        </div>
+        <div className="dx-next">
+          <div>
+            <span>Επόμενο ραντεβού</span>
+            <strong>
+              {next
+                ? `${next.customer_name || "Πελάτης"} · ${next.service?.name || "Υπηρεσία"}`
+                : "Κανένα προγραμματισμένο"}
+            </strong>
+          </div>
+          {next && <time>{timeOf(next.starts_at)}</time>}
+        </div>
+      </section>
+
+      <section className="dx-section">
+        <div className="dx-metrics">
+          <div className="dx-metric">
+            <CalendarDays size={20} />
+            <strong>{todayItems.length}</strong>
+            <span>Σήμερα</span>
+          </div>
+          <div className="dx-metric">
+            <Clock3 size={20} />
+            <strong>{weekCount}</strong>
+            <span>Αυτή την εβδομάδα</span>
+          </div>
+          <div className="dx-metric">
+            <Users size={20} />
+            <strong>{customerCount}</strong>
+            <span>Πελάτες</span>
+          </div>
+          <div className="dx-metric">
+            <Scissors size={20} />
+            <strong>{serviceCount}</strong>
+            <span>Υπηρεσίες</span>
+          </div>
+        </div>
+      </section>
+
+      <section className="dx-section">
+        <h2>Γρήγορες ενέργειες</h2>
+        <div className="dx-actions">
+          <Link className="dx-action dark" to={newUrl}>
+            <i><Plus size={20} /></i> Νέο ραντεβού
+          </Link>
+          <button className="dx-action" onClick={onShare}>
+            <i><Copy size={18} /></i>
+            {copied ? "Αντιγράφηκε" : "Κοινοποίηση booking link"}
+          </button>
+          <Link className="dx-action" to="/dashboard/services">
+            <i><Scissors size={18} /></i> Υπηρεσίες
+          </Link>
+          <Link className="dx-action" to="/dashboard/staff">
+            <i><UserRound size={18} /></i> Ομάδα
+          </Link>
+        </div>
+      </section>
+
+      <section className="dx-section">
+        <div className="dx-section-head">
+          <h2>Σήμερα</h2>
+          <Link to="/dashboard/calendar">Ημερολόγιο</Link>
+        </div>
+        {appointments.loading ? (
+          <Loading />
+        ) : sorted.length === 0 ? (
+          <div className="dx-empty">
+            <strong>Δεν υπάρχουν ραντεβού σήμερα</strong>
+            <p>Τα νέα ραντεβού θα εμφανίζονται εδώ.</p>
+            <Link className="dx-cta" to={newUrl}>
+              Δημιούργησε το πρώτο ραντεβού
+            </Link>
+          </div>
+        ) : (
+          <div className="dx-list">
+            {sorted.map((item) => (
+              <div className="dx-appt" key={item.id}>
+                <time>{timeOf(item.starts_at)}</time>
+                <div style={{ minWidth: 0 }}>
+                  <strong>{item.customer_name || "Πελάτης"}</strong>
+                  <span className="sub">
+                    {item.service?.name || "Υπηρεσία"}
+                    {item.staff?.name ? ` · ${item.staff.name}` : ""}
+                  </span>
+                </div>
+                <span className={`dx-pill ${item.status}`}>
+                  {statusLabels[item.status] || statusLabels.confirmed}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <div className="dx-status">
+        <span className="dx-dot" />
+        <span>Η επιχείρηση δέχεται online κρατήσεις</span>
+      </div>
+    </div>
+  );
+}
+
 function Overview({ appointments, business, hours }) {
   const today = new Date().toISOString().slice(0, 10);
   const todayItems = appointments.data.filter(
     (appointment) => appointment.appointment_date === today,
   );
-  const items = todayItems.slice(0, 4);
   const weekStart = new Date(`${today}T00:00:00`);
   weekStart.setDate(weekStart.getDate() - ((weekStart.getDay() + 6) % 7));
   const weekEnd = new Date(weekStart);
@@ -550,74 +763,17 @@ function Overview({ appointments, business, hours }) {
   };
   return (
     <>
-      <PageHeader
-        eyebrow="ΣΗΜΕΡΑ"
-        title="Καλημέρα"
-        subtitle={`Μια γρήγορη ματιά στο ${business.name} σήμερα.`}
-        action={
-          <Link className="primary-button" to={`/b/${business.slug}`}>
-            <Plus size={17} /> Νέο ραντεβού
-          </Link>
-        }
+      <DashboardHome
+        business={business}
+        appointments={appointments}
+        todayItems={todayItems}
+        weekCount={weekItems.length}
+        customerCount={customerCount}
+        serviceCount={serviceCount}
+        onShare={sharePublicUrl}
+        copied={copied}
       />
-      <div className="stats-grid">
-        <StatCard
-          icon={CalendarDays}
-          label="Σημερινά ραντεβού"
-          value={items.length}
-          trend="Ενημερωμένα από τη βάση"
-          tone="blue"
-        />
-        <StatCard
-          icon={Users}
-          label="Ενεργοί πελάτες"
-          value={customerCount}
-          trend="Με ραντεβού"
-          tone="green"
-        />
-        <StatCard
-          icon={Scissors}
-          label="Υπηρεσίες"
-          value={serviceCount}
-          trend="Σε ραντεβού"
-          tone="orange"
-        />
-        <StatCard
-          icon={Clock3}
-          label="Ραντεβού εβδομάδας"
-          value={weekItems.length}
-          trend="Συνολικές κρατήσεις"
-          tone="violet"
-        />
-      </div>
       <div className="dashboard-grid">
-        <section className="panel schedule">
-          <div className="panel-heading">
-            <div>
-              <h2>Σημερινό πρόγραμμα</h2>
-              <p>
-                {appointments.loading
-                  ? "Φόρτωση..."
-                  : `${items.length} ραντεβού για σήμερα`}
-              </p>
-            </div>
-            <Link to="/dashboard/calendar" className="text-link">
-              Προβολή ημερολογίου <ChevronRight size={15} />
-            </Link>
-          </div>
-          {appointments.loading ? (
-            <Loading />
-          ) : (
-            <div className="appointment-list">
-              {items.map((appointment) => (
-                <AppointmentRow
-                  key={appointment.id}
-                  appointment={appointment}
-                />
-              ))}
-            </div>
-          )}
-        </section>
         <section className="panel availability">
           <div className="panel-heading">
             <div>
