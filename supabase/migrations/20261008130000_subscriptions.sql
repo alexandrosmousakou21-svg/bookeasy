@@ -15,6 +15,7 @@ create table if not exists public.subscriptions (
   current_period_start timestamptz,
   current_period_end timestamptz,
   cancel_at_period_end boolean not null default false,
+  last_stripe_event_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -24,6 +25,7 @@ create unique index if not exists subscriptions_stripe_customer_idx
   on public.subscriptions(stripe_customer_id) where stripe_customer_id is not null;
 create unique index if not exists subscriptions_stripe_subscription_idx
   on public.subscriptions(stripe_subscription_id) where stripe_subscription_id is not null;
+alter table public.subscriptions add column if not exists last_stripe_event_at timestamptz;
 create index if not exists subscriptions_user_idx on public.subscriptions(user_id);
 
 -- Idempotency log for Stripe webhook events (service role only).
@@ -95,8 +97,11 @@ create trigger businesses_start_trial
 after insert on public.businesses
 for each row execute function public.start_business_trial();
 
--- Backfill: existing businesses get a trial starting at migration time (no data is removed).
+-- Backfill: existing businesses get a trial starting at migration time. An existing 'plus'
+-- business keeps plan 'plus' (it is NOT downgraded to a basic trial). No data is removed.
 insert into public.subscriptions (business_id, user_id, plan, status, trial_start, trial_end)
-select b.id, b.owner_id, 'basic', 'trialing', now(), now() + interval '14 days'
+select b.id, b.owner_id,
+  case when b.subscription_plan = 'plus' then 'plus' else 'basic' end,
+  'trialing', now(), now() + interval '14 days'
 from public.businesses b
 on conflict (business_id) do nothing;

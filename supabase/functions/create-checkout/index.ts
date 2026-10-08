@@ -1,7 +1,8 @@
 import Stripe from "https://esm.sh/stripe@17.7.0?target=deno";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { PLAN_BY_PRICE, PRICE_BY_PLAN } from "../_shared/plans.ts";
-import { corsHeadersFor } from "../_shared/cors.ts";
+import { appBaseUrl, corsHeadersFor } from "../_shared/cors.ts";
+import { checkoutBlocked } from "../_shared/subscription-sync.ts";
 
 const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
   apiVersion: "2024-12-18.acacia",
@@ -58,20 +59,28 @@ Deno.serve(async (req) => {
     if (!business) return json({ error: "Δεν έχετε πρόσβαση σε αυτή την επιχείρηση." }, 403);
 
     const admin = createClient(supabaseUrl, serviceKey);
+    const base = appBaseUrl(Deno.env.get("APP_BASE_URL"));
+    if (!base) return json({ error: "Λείπει ρύθμιση του server." }, 500);
+
     const { data: existing } = await admin
       .from("subscriptions")
-      .select("stripe_customer_id,status")
+      .select("stripe_customer_id,stripe_subscription_id,status")
       .eq("business_id", business.id)
       .maybeSingle();
-    if (existing?.status === "active") {
-      return json({ error: "Υπάρχει ήδη ενεργή συνδρομή." }, 409);
-    }
 
-    const allowed = (Deno.env.get("ALLOWED_ORIGINS") || "").split(",").map((v) => v.trim()).filter(Boolean);
-    const origin = req.headers.get("Origin") || "";
-    const base = allowed.length
-      ? (allowed.includes(origin) ? origin : allowed[0])
-      : origin || "http://localhost:5173";
+    // Also ask Stripe: never create a second subscription for a customer that still has a live one.
+    let liveStripeStatuses: string[] = [];
+    if (existing?.stripe_customer_id) {
+      const list = await stripe.subscriptions.list({
+        customer: existing.stripe_customer_id,
+        status: "all",
+        limit: 20,
+      });
+      liveStripeStatuses = list.data.map((item) => item.status);
+    }
+    if (checkoutBlocked(existing, liveStripeStatuses)) {
+      return json({ error: "Υπάρχει ήδη συνδρομή για αυτή την επιχείρηση." }, 409);
+    }
 
     const metadata = { user_id: user.id, business_id: business.id, subscription_plan: plan };
     const session = await stripe.checkout.sessions.create({
@@ -80,8 +89,8 @@ Deno.serve(async (req) => {
         ? { customer: existing.stripe_customer_id }
         : { customer_email: user.email || undefined }),
       line_items: [{ price: PRICE_BY_PLAN[plan], quantity: 1 }],
-      success_url: base + "/dashboard?payment=success",
-      cancel_url: base + "/dashboard?payment=cancelled",
+      success_url: base + "/dashboard/plan?payment=success",
+      cancel_url: base + "/dashboard/plan?payment=cancelled",
       client_reference_id: business.id,
       metadata,
       subscription_data: { metadata },

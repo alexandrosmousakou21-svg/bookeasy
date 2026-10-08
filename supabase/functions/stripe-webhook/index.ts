@@ -2,6 +2,7 @@ import Stripe from "https://esm.sh/stripe@17.7.0?target=deno";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { PLAN_BY_PRICE } from "../_shared/plans.ts";
 import { computeEntitlement } from "../_shared/entitlement.ts";
+import { decideSync } from "../_shared/subscription-sync.ts";
 
 const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
   apiVersion: "2024-12-18.acacia",
@@ -25,27 +26,47 @@ async function resolveBusinessId(admin: Admin, sub: Stripe.Subscription) {
   return data?.business_id as string | undefined;
 }
 
-async function syncSubscription(admin: Admin, sub: Stripe.Subscription) {
+// Returns true when the subscription row was actually updated.
+async function syncSubscription(admin: Admin, sub: Stripe.Subscription, event: Stripe.Event): Promise<boolean> {
   const businessId = await resolveBusinessId(admin, sub);
   if (!businessId) {
-    console.warn("subscription without business", sub.id);
-    return;
+    console.warn("webhook: subscription without business", { event: event.id, subscription: sub.id });
+    return false;
   }
   const { data: business } = await admin
     .from("businesses")
     .select("id,owner_id")
     .eq("id", businessId)
     .maybeSingle();
-  if (!business) return;
+  if (!business) return false;
 
   const priceId = sub.items?.data?.[0]?.price?.id;
-  const plan = (priceId && PLAN_BY_PRICE[priceId]) || sub.metadata?.subscription_plan;
+  const plan = priceId ? PLAN_BY_PRICE[priceId] : undefined;
   if (plan !== "basic" && plan !== "plus") {
-    console.warn("unknown price/plan for subscription", sub.id);
-    return;
+    // Unknown price: change nothing and fail so the event is NOT marked processed (safe state kept).
+    console.error("webhook: unknown stripe price, entitlement unchanged", {
+      event: event.id,
+      type: event.type,
+      subscription: sub.id,
+      price: priceId || null,
+    });
+    throw new Error("unknown_price");
   }
   const customerId = typeof sub.customer === "string" ? sub.customer : sub.customer?.id;
 
+  const { data: existing } = await admin
+    .from("subscriptions")
+    .select("id,stripe_subscription_id,status,last_stripe_event_at")
+    .eq("business_id", businessId)
+    .maybeSingle();
+
+  const decision = decideSync(existing, sub.id, event.created);
+  if (decision !== "apply") {
+    console.warn("webhook: ignored event", { event: event.id, type: event.type, decision, subscription: sub.id });
+    return false;
+  }
+
+  const eventAt = new Date(event.created * 1000).toISOString();
   const row: Record<string, unknown> = {
     stripe_customer_id: customerId,
     stripe_subscription_id: sub.id,
@@ -54,19 +75,27 @@ async function syncSubscription(admin: Admin, sub: Stripe.Subscription) {
     current_period_start: iso(sub.current_period_start),
     current_period_end: iso(sub.current_period_end),
     cancel_at_period_end: sub.cancel_at_period_end,
+    last_stripe_event_at: eventAt,
   };
   if (sub.trial_start) row.trial_start = iso(sub.trial_start);
   if (sub.trial_end) row.trial_end = iso(sub.trial_end);
 
-  const { data: existing } = await admin
-    .from("subscriptions")
-    .select("id")
-    .eq("business_id", businessId)
-    .maybeSingle();
-  const { error } = existing
-    ? await admin.from("subscriptions").update(row).eq("id", existing.id)
-    : await admin.from("subscriptions").insert({ ...row, business_id: businessId, user_id: business.owner_id });
-  if (error) throw error;
+  if (existing) {
+    // Conditional update: only if no newer event was applied in the meantime.
+    const { data: updated, error } = await admin
+      .from("subscriptions")
+      .update(row)
+      .eq("id", existing.id)
+      .or(`last_stripe_event_at.is.null,last_stripe_event_at.lte.${eventAt}`)
+      .select("id");
+    if (error) throw error;
+    if (!updated?.length) return false;
+  } else {
+    const { error } = await admin
+      .from("subscriptions")
+      .insert({ ...row, business_id: businessId, user_id: business.owner_id });
+    if (error) throw error;
+  }
 
   // businesses.subscription_plan is only ever written here (service role).
   const entitlement = computeEntitlement({
@@ -80,6 +109,7 @@ async function syncSubscription(admin: Admin, sub: Stripe.Subscription) {
     .update({ subscription_plan: entitlement.hasAccess ? plan : "basic" })
     .eq("id", businessId);
   if (bizError) throw bizError;
+  return true;
 }
 
 async function handleEvent(admin: Admin, event: Stripe.Event) {
@@ -92,13 +122,13 @@ async function handleEvent(admin: Admin, event: Stripe.Event) {
       if (!sub.metadata?.business_id && session.metadata?.business_id) {
         sub.metadata = { ...sub.metadata, ...session.metadata };
       }
-      await syncSubscription(admin, sub);
+      await syncSubscription(admin, sub, event);
       return;
     }
     case "customer.subscription.created":
     case "customer.subscription.updated":
     case "customer.subscription.deleted": {
-      await syncSubscription(admin, event.data.object as Stripe.Subscription);
+      await syncSubscription(admin, event.data.object as Stripe.Subscription, event);
       return;
     }
     case "invoice.payment_failed": {
@@ -107,9 +137,9 @@ async function handleEvent(admin: Admin, event: Stripe.Event) {
       const subId = typeof invoice.subscription === "string" ? invoice.subscription : invoice.subscription?.id;
       if (!subId) return;
       const sub = await stripe.subscriptions.retrieve(subId);
-      await syncSubscription(admin, sub);
-      // Make sure a failed payment is never treated as active.
-      if (sub.status === "active") {
+      const applied = await syncSubscription(admin, sub, event);
+      // A failed payment is never treated as active (only if this event was applied).
+      if (applied && sub.status === "active") {
         await admin.from("subscriptions").update({ status: "past_due" }).eq("stripe_subscription_id", subId);
         const { data } = await admin.from("subscriptions").select("business_id").eq("stripe_subscription_id", subId).maybeSingle();
         if (data) await admin.from("businesses").update({ subscription_plan: "basic" }).eq("id", data.business_id);

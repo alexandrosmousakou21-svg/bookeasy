@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Link,
   NavLink,
@@ -1212,34 +1212,77 @@ const PLAN_OPTIONS = [
 const planDate = (value) =>
   value ? new Date(value).toLocaleDateString("el-GR", { dateStyle: "long" }) : "—";
 
+const checkoutErrorText = async (err) => {
+  const status = err?.context?.status;
+  if (status === 401) return "Χρειάζεται σύνδεση. Συνδεθείτε ξανά και δοκιμάστε.";
+  if (status === 403) return "Μόνο ο ιδιοκτήτης της επιχείρησης μπορεί να αλλάξει πακέτο.";
+  if (status === 409) return "Υπάρχει ήδη συνδρομή για αυτή την επιχείρηση.";
+  return "Προσωρινό πρόβλημα. Δοκιμάστε ξανά σε λίγο.";
+};
+const TERMINAL_SUB_STATUSES = ["canceled", "incomplete_expired"];
+
 function Plan({ business }) {
+  const location = useLocation();
+  const paymentParam = new URLSearchParams(location.search).get("payment");
   const [sub, setSub] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [busyPlan, setBusyPlan] = useState("");
+  const [waiting, setWaiting] = useState(paymentParam === "success");
+  const [timedOut, setTimedOut] = useState(false);
+
+  const load = useCallback(async () => {
+    if (!supabase) {
+      setError(SUPABASE_CONFIG_ERROR);
+      setLoading(false);
+      return null;
+    }
+    const { data, error: loadError } = await supabase
+      .from("subscriptions")
+      .select("*")
+      .eq("business_id", business.id)
+      .maybeSingle();
+    if (loadError) setError(errorText(loadError));
+    else setSub(data);
+    setLoading(false);
+    return loadError ? null : data;
+  }, [business.id]);
 
   useEffect(() => {
+    load();
+  }, [load]);
+
+  // After ?payment=success, success is only confirmed from the database (set by the Stripe webhook).
+  useEffect(() => {
+    if (paymentParam !== "success") return undefined;
     let alive = true;
-    (async () => {
-      if (!supabase) {
-        setError(SUPABASE_CONFIG_ERROR);
-        setLoading(false);
-        return;
-      }
-      const { data, error: loadError } = await supabase
-        .from("subscriptions")
-        .select("*")
-        .eq("business_id", business.id)
-        .maybeSingle();
+    let tries = 0;
+    setWaiting(true);
+    setTimedOut(false);
+    const timer = setInterval(async () => {
+      tries += 1;
+      const data = await load();
       if (!alive) return;
-      if (loadError) setError(errorText(loadError));
-      else setSub(data);
-      setLoading(false);
-    })();
+      if (data?.status === "active" && data.stripe_subscription_id) {
+        setWaiting(false);
+        clearInterval(timer);
+      } else if (tries >= 10) {
+        setWaiting(false);
+        setTimedOut(true);
+        clearInterval(timer);
+      }
+    }, 3000);
+    load().then((data) => {
+      if (alive && data?.status === "active" && data.stripe_subscription_id) {
+        setWaiting(false);
+        clearInterval(timer);
+      }
+    });
     return () => {
       alive = false;
+      clearInterval(timer);
     };
-  }, [business.id]);
+  }, [paymentParam, load]);
 
   const upgrade = async (plan) => {
     setError("");
@@ -1250,17 +1293,21 @@ function Plan({ business }) {
         { body: { plan, businessId: business.id } },
       );
       if (invokeError) throw invokeError;
-      if (!data?.url) throw new Error(data?.error || "Δεν δημιουργήθηκε πληρωμή.");
+      if (!data?.url) throw new Error("no_url");
       window.location.href = data.url;
     } catch (err) {
-      setError(errorText(err));
+      setError(await checkoutErrorText(err));
       setBusyPlan("");
     }
   };
 
+  const hasStripeSub =
+    Boolean(sub?.stripe_subscription_id) && !TERMINAL_SUB_STATUSES.includes(sub?.status);
   const trialActive =
     sub?.status === "trialing" && sub.trial_end && new Date(sub.trial_end) > new Date();
-  const hasAccess = sub?.status === "active" || trialActive;
+  const periodOk =
+    !sub?.current_period_end || new Date(sub.current_period_end) > new Date();
+  const hasAccess = (sub?.status === "active" && periodOk) || trialActive;
   const statusLabel = !sub
     ? "Χωρίς συνδρομή"
     : sub.status === "trialing" && !trialActive
@@ -1275,6 +1322,14 @@ function Plan({ business }) {
         subtitle="Δείτε την κατάσταση της συνδρομής σας και αναβαθμίστε."
       />
       <Notice message={error} />
+      {paymentParam === "cancelled" && <Notice message="Η πληρωμή ακυρώθηκε. Δεν έγινε καμία χρέωση." />}
+      {waiting && <Notice message="Αναμονή επιβεβαίωσης της πληρωμής από το σύστημα..." />}
+      {timedOut && !waiting && sub?.status !== "active" && (
+        <Notice message="Η πληρωμή δεν έχει επιβεβαιωθεί ακόμα. Ανανεώστε σε λίγο." />
+      )}
+      {paymentParam === "success" && sub?.status === "active" && sub.stripe_subscription_id && (
+        <Notice success message="Η συνδρομή σας ενεργοποιήθηκε." />
+      )}
       {loading ? (
         <Loading />
       ) : (
@@ -1301,14 +1356,14 @@ function Plan({ business }) {
           </section>
           <div className="dx-plan-grid">
             {PLAN_OPTIONS.map(([key, name, desc]) => {
-              const current = sub?.status === "active" && sub.plan === key;
+              const current = hasAccess && sub?.status === "active" && sub.plan === key;
               return (
                 <section className="panel dx-plan-card" key={key}>
                   <h3>{name}</h3>
                   <p>{desc}</p>
                   <button
                     className="primary-button"
-                    disabled={current || Boolean(busyPlan) || sub?.status === "active"}
+                    disabled={current || Boolean(busyPlan) || hasStripeSub}
                     onClick={() => upgrade(key)}
                   >
                     {current

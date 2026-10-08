@@ -23,6 +23,11 @@ export function computeEntitlement(
   }
   const plan = sub.plan === "plus" ? "plus" : "basic";
   if (sub.status === "active") {
+    // No grace period: an active subscription whose period has ended is not entitled.
+    const periodEnd = sub.current_period_end ? new Date(sub.current_period_end) : null;
+    if (periodEnd && periodEnd.getTime() <= now.getTime()) {
+      return { hasAccess: false, plan: null, state: "restricted", reason: "period_ended" };
+    }
     return { hasAccess: true, plan, state: "active", reason: "active" };
   }
   if (sub.status === "trialing") {
