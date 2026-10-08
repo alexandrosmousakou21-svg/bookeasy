@@ -1,6 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-// Skeleton worker: claims outbox rows and logs them. It does NOT send email or push in this phase.
+// Worker: claims outbox rows and delivers email via Resend (secrets RESEND_API_KEY, NOTIFICATION_FROM_EMAIL). Push is not implemented yet.
 // Invoke from a scheduler (next phase) with header `x-worker-secret: $NOTIFICATION_WORKER_SECRET`.
 
 const MAX_ATTEMPTS = Number(Deno.env.get("NOTIFICATION_MAX_ATTEMPTS") || 5);
@@ -15,18 +15,73 @@ type OutboxRow = {
   payload: Record<string, unknown>;
 };
 
-// Placeholder for provider adapters (email/push) in later phases.
 // Throw RecoverableError to retry later; any other error is treated as permanent.
 export class RecoverableError extends Error {}
 
+const esc = (v: unknown) =>
+  String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
+
+function formatWhen(p: Record<string, unknown>): string {
+  const tz = String(p.timezone || "Europe/Athens");
+  const iso = p.starts_at ? String(p.starts_at) : null;
+  if (iso) {
+    try {
+      return new Intl.DateTimeFormat("el-GR", { dateStyle: "full", timeStyle: "short", timeZone: tz }).format(new Date(iso));
+    } catch (_) { /* fall through */ }
+  }
+  return `${p.appointment_date ?? ""} ${String(p.start_time ?? "").slice(0, 5)}`.trim();
+}
+
+export function renderEmail(row: OutboxRow): { subject: string; html: string; text: string } {
+  const p = row.payload || {};
+  const lines = [
+    `Υπηρεσία: ${p.service_name || "-"}`,
+    p.staff_name ? `Επαγγελματίας: ${p.staff_name}` : "",
+    `Ημερομηνία & ώρα: ${formatWhen(p)}`,
+  ].filter(Boolean);
+  const cancelled = row.type === "booking_cancellation";
+  const subject = cancelled ? "Το ραντεβού σου ακυρώθηκε" : "Επιβεβαίωση ραντεβού";
+  const intro = `Γεια σου ${p.customer_name || ""},`.replace(" ,", ",");
+  const lead = cancelled ? "Το ραντεβού σου ακυρώθηκε." : "Το ραντεβού σου καταχωρήθηκε.";
+  const text = [intro, "", lead, ...lines, "", "BookEasy"].join("\n");
+  const html = `<p>${esc(intro)}</p><p>${esc(lead)}</p><ul>${lines.map((l) => `<li>${esc(l)}</li>`).join("")}</ul><p>BookEasy</p>`;
+  return { subject, html, text };
+}
+
 export async function deliver(row: OutboxRow): Promise<void> {
-  console.log("notification (dry-run, not sent)", {
-    id: row.id,
-    type: row.type,
-    channel: row.channel,
-    attempt: row.attempts,
-    payload: row.payload,
-  });
+  if (row.channel !== "email") {
+    throw new Error(`channel_not_supported:${row.channel}`);
+  }
+  const apiKey = Deno.env.get("RESEND_API_KEY");
+  const from = Deno.env.get("NOTIFICATION_FROM_EMAIL");
+  if (!apiKey || !from) throw new RecoverableError("email_provider_not_configured");
+
+  const to = String(row.payload?.customer_email || "").trim();
+  if (!to) throw new Error("missing_recipient_email");
+
+  const { subject, html, text } = renderEmail(row);
+  let res: Response;
+  try {
+    res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+        // outbox row id makes provider-side retries idempotent
+        "Idempotency-Key": `notification-outbox/${row.id}`,
+      },
+      body: JSON.stringify({ from, to: [to], subject, html, text }),
+    });
+  } catch (_) {
+    throw new RecoverableError("resend_network_error");
+  }
+  if (!res.ok) {
+    const detail = (await res.text()).slice(0, 300);
+    const msg = `resend_${res.status}: ${detail}`;
+    if (res.status === 429 || res.status >= 500) throw new RecoverableError(msg);
+    throw new Error(msg);
+  }
+  console.log("email sent", { id: row.id, type: row.type });
 }
 
 // deno-lint-ignore no-explicit-any
