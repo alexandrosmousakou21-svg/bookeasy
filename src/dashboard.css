@@ -169,3 +169,14 @@
 }
 button.dx-chip{background:var(--dx-card);color:var(--dx-card-ink);opacity:1}
 .dx-slot time{line-height:1.15}
+
+/* Plan page */
+.dx-plan-status{padding:var(--dx-s4);display:flex;flex-wrap:wrap;gap:var(--dx-s3);align-items:center;justify-content:space-between}
+.dx-plan-status small{display:block;color:var(--dx-card-muted);font-size:13px}
+.dx-plan-status strong{font:800 22px Manrope,sans-serif}
+.dx-plan-status p{flex-basis:100%;margin:0;color:var(--dx-card-muted);font-size:14px}
+.dx-plan-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:var(--dx-s3);margin-top:var(--dx-s3)}
+.dx-plan-card{padding:var(--dx-s4);display:flex;flex-direction:column;gap:var(--dx-s3)}
+.dx-plan-card h3{font:800 20px Manrope,sans-serif;margin:0}
+.dx-plan-card p{color:var(--dx-card-muted);font-size:14px;margin:0}
+.dx-plan-card button{min-height:48px}

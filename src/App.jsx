@@ -472,6 +472,7 @@ function Dashboard({
               path="profile"
               element={<CustomerBooking dashboardMode={true} business={business} />}
             />
+            <Route path="plan" element={<Plan business={business} />} />
             <Route
               path="settings"
               element={
@@ -533,6 +534,7 @@ function MobileNav({ business, logout }) {
             <Link to="/dashboard/calendar"><CalendarDays size={20} /> Ημερολόγιο</Link>
             <Link to="/dashboard/staff"><UserRound size={20} /> Ομάδα</Link>
             <Link to="/dashboard/profile"><Sparkles size={20} /> Προφίλ επιχείρησης</Link>
+            <Link to="/dashboard/plan"><Sparkles size={20} /> Πακέτο</Link>
             <Link to="/dashboard/settings"><Settings size={20} /> Ρυθμίσεις</Link>
             <Link to={`/b/${business.slug}`}><ChevronRight size={20} /> Δημόσια σελίδα</Link>
             <button className="danger" onClick={logout}>
@@ -1190,6 +1192,137 @@ function Calendar({ appointments }) {
           </div>
         )}
       </div>
+    </>
+  );
+}
+const PLAN_STATUS_LABELS = {
+  trialing: "Δοκιμαστική περίοδος",
+  active: "Ενεργή",
+  past_due: "Εκκρεμεί πληρωμή",
+  unpaid: "Απλήρωτη",
+  canceled: "Ακυρωμένη",
+  incomplete: "Ημιτελής",
+  incomplete_expired: "Έληξε",
+  paused: "Σε παύση",
+};
+const PLAN_OPTIONS = [
+  ["basic", "Basic", "Για να ξεκινήσεις με online κρατήσεις και διαχείριση ραντεβού."],
+  ["plus", "Plus", "Για επιχειρήσεις που θέλουν περισσότερες δυνατότητες."],
+];
+const planDate = (value) =>
+  value ? new Date(value).toLocaleDateString("el-GR", { dateStyle: "long" }) : "—";
+
+function Plan({ business }) {
+  const [sub, setSub] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [busyPlan, setBusyPlan] = useState("");
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      if (!supabase) {
+        setError(SUPABASE_CONFIG_ERROR);
+        setLoading(false);
+        return;
+      }
+      const { data, error: loadError } = await supabase
+        .from("subscriptions")
+        .select("*")
+        .eq("business_id", business.id)
+        .maybeSingle();
+      if (!alive) return;
+      if (loadError) setError(errorText(loadError));
+      else setSub(data);
+      setLoading(false);
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [business.id]);
+
+  const upgrade = async (plan) => {
+    setError("");
+    setBusyPlan(plan);
+    try {
+      const { data, error: invokeError } = await supabase.functions.invoke(
+        "create-checkout",
+        { body: { plan, businessId: business.id } },
+      );
+      if (invokeError) throw invokeError;
+      if (!data?.url) throw new Error(data?.error || "Δεν δημιουργήθηκε πληρωμή.");
+      window.location.href = data.url;
+    } catch (err) {
+      setError(errorText(err));
+      setBusyPlan("");
+    }
+  };
+
+  const trialActive =
+    sub?.status === "trialing" && sub.trial_end && new Date(sub.trial_end) > new Date();
+  const hasAccess = sub?.status === "active" || trialActive;
+  const statusLabel = !sub
+    ? "Χωρίς συνδρομή"
+    : sub.status === "trialing" && !trialActive
+      ? "Έληξε η δοκιμή"
+      : PLAN_STATUS_LABELS[sub.status] || sub.status;
+
+  return (
+    <>
+      <PageHeader
+        eyebrow="ΠΑΚΕΤΟ"
+        title="Το πακέτο σας"
+        subtitle="Δείτε την κατάσταση της συνδρομής σας και αναβαθμίστε."
+      />
+      <Notice message={error} />
+      {loading ? (
+        <Loading />
+      ) : (
+        <>
+          <section className="panel dx-plan-status">
+            <div>
+              <small>Τρέχον πακέτο</small>
+              <strong>{hasAccess ? (sub.plan === "plus" ? "Plus" : "Basic") : "Περιορισμένη πρόσβαση"}</strong>
+            </div>
+            <span className={`dx-pill ${hasAccess ? "" : "cancelled"}`}>{statusLabel}</span>
+            {sub?.status === "trialing" && sub.trial_end && (
+              <p>Η δοκιμαστική περίοδος λήγει στις {planDate(sub.trial_end)}.</p>
+            )}
+            {sub?.status === "active" && sub.current_period_end && (
+              <p>
+                {sub.cancel_at_period_end
+                  ? `Η συνδρομή θα ακυρωθεί στις ${planDate(sub.current_period_end)}.`
+                  : `Ανανέωση στις ${planDate(sub.current_period_end)}.`}
+              </p>
+            )}
+            {!hasAccess && (
+              <p>Επιλέξτε πακέτο για να συνεχίσετε να χρησιμοποιείτε τον AI βοηθό.</p>
+            )}
+          </section>
+          <div className="dx-plan-grid">
+            {PLAN_OPTIONS.map(([key, name, desc]) => {
+              const current = sub?.status === "active" && sub.plan === key;
+              return (
+                <section className="panel dx-plan-card" key={key}>
+                  <h3>{name}</h3>
+                  <p>{desc}</p>
+                  <button
+                    className="primary-button"
+                    disabled={current || Boolean(busyPlan) || sub?.status === "active"}
+                    onClick={() => upgrade(key)}
+                  >
+                    {current
+                      ? "Τρέχον πακέτο"
+                      : busyPlan === key
+                        ? "Μεταφορά..."
+                        : `Επιλογή ${name}`}
+                  </button>
+                </section>
+              );
+            })}
+          </div>
+        </>
+      )}
     </>
   );
 }

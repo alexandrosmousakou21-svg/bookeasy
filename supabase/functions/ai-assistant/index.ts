@@ -1,3 +1,5 @@
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getEntitlement } from "../_shared/entitlement.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -25,9 +27,10 @@ Deno.serve(async (req) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     const openAiKey = Deno.env.get("OPENAI_API_KEY");
 
-    if (!supabaseUrl || !supabaseAnonKey || !openAiKey) {
+    if (!supabaseUrl || !supabaseAnonKey || !serviceRoleKey || !openAiKey) {
       return new Response(
         JSON.stringify({ error: "Λείπει ρύθμιση του AI assistant." }),
         {
@@ -101,6 +104,25 @@ Deno.serve(async (req) => {
       return new Response(
         JSON.stringify({
           error: "Δεν έχετε πρόσβαση σε αυτή την επιχείρηση.",
+        }),
+        {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+
+    // Server-side entitlement check BEFORE any OpenAI call.
+    const entitlement = await getEntitlement(
+      createClient(supabaseUrl, serviceRoleKey),
+      business.id,
+    );
+    if (!entitlement.hasAccess) {
+      return new Response(
+        JSON.stringify({
+          error:
+            "Ο AI βοηθός απαιτεί ενεργή συνδρομή ή δοκιμαστική περίοδο.",
+          code: "entitlement_required",
         }),
         {
           status: 403,
