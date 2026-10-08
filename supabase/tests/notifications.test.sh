@@ -22,6 +22,7 @@ q -f supabase/migrations/20261008130000_subscriptions.sql >/dev/null 2>&1
 q -c "grant usage on schema public to anon,authenticated,service_role; grant all on all tables in schema public to anon,authenticated,service_role" >/dev/null
 q -f supabase/migrations/20261008_notifications_system.sql >/dev/null 2>&1 || { echo "FAIL migration"; exit 1; }
 q -f supabase/migrations/20261008_notifications_system.sql >/dev/null 2>&1 && echo "PASS migration idempotent" || { echo "FAIL migration rerun"; fail=1; }
+q -f supabase/migrations/20261009000000_appointment_booking_enforcement.sql >/dev/null 2>&1 || { echo "FAIL booking enforcement migration"; exit 1; }
 
 U1=00000000-0000-0000-0000-000000000001; U2=00000000-0000-0000-0000-000000000002
 B=10000000-0000-0000-0000-000000000001; S=20000000-0000-0000-0000-000000000001; ST=30000000-0000-0000-0000-000000000001
@@ -60,7 +61,9 @@ ok "8e own preferences visible" "$(as $U2 "select count(*) from notification_pre
 ok "8f others' preferences hidden" "$(as $U1 "select count(*) from notification_preferences" | tail -1)" "0"
 r=$(as $U1 "insert into push_devices(user_id,device_token) values ('$U2','x')"); denied "8g cannot create device for other user" "$r"
 r=$(as $U2 "select claim_notification_outbox()"); denied "8h clients cannot call claim function" "$r"
-ok "8i trigger works for customer (RLS user) booking" "$(as $U2 "insert into appointments(business_id,customer_id,staff_id,service_id,appointment_date,start_time,end_time,status,customer_name,starts_at,ends_at) values ('$B','$U2','$ST','$S','2030-01-02','10:00','10:30','booked','Cu','2030-01-02 10:00+00','2030-01-02 10:30+00'); select 'ok'" | tail -1)" "ok"
+# Customers book through book_appointment() (direct client INSERT is no longer allowed).
+q -c "insert into working_hours(business_id,day_of_week,start_time,end_time) select '$B',g,'08:00','20:00' from generate_series(0,6) g" >/dev/null
+ok "8i trigger works for customer (RLS user) booking via RPC" "$(as $U2 "select (book_appointment('$B','$ST','$S','2030-01-02','10:00','Cu','+30 6900000000'))->>'status'" | tail -1)" "booked"
 ok "8j ...and enqueued" "$(q -c "select count(*) from notification_outbox where type='booking_confirmation'")" "2"
 
 # Worker claim
