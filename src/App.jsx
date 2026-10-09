@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Link,
   NavLink,
@@ -8,6 +8,8 @@ import {
   useNavigate,
   useParams,
 } from "react-router-dom";
+import MarketingHome from "./components/MarketingHome";
+import InstallPage from "./components/InstallPage";
 import {
   CalendarDays,
   ChevronDown,
@@ -20,7 +22,9 @@ import {
   Menu,
   Plus,
   Scissors,
+  Search,
   Settings,
+  SlidersHorizontal,
   Sparkles,
   Trash2,
   UserRound,
@@ -245,6 +249,7 @@ function App() {
   return (
     <Routes>
       <Route path="/" element={<HomePage />} />
+      <Route path="/install" element={<InstallPage />} />
       <Route path="/login" element={<AuthPage mode="login" />} />
       <Route path="/register" element={<AuthPage mode="register" />} />
       <Route path="/customer" element={<CustomerHome />} />
@@ -279,40 +284,7 @@ function App() {
   );
 }
 function HomePage() {
-  return (
-    <div className="auth-layout">
-      <div className="auth-aside">
-        <Link className="brand light" to="/">
-          <span className="brand-mark">B</span>
-          <span>
-            book<span>easy</span>
-          </span>
-        </Link>
-        <div>
-          <span className="eyebrow">BOOKEASY</span>
-          <h1>Η Νο1 εφαρμογή κρατήσεων</h1>
-          <p>
-            Κλείσε εύκολα το επόμενο ραντεβού σου ή διαχειρίσου την επιχείρησή
-            σου μέσα από μία απλή και σύγχρονη πλατφόρμα.
-          </p>
-        </div>
-        <small>© 2025 BookEasy</small>
-      </div>
-      <div className="auth-form-wrap">
-        <div className="auth-form">
-          <span className="eyebrow">ΚΑΛΩΣ ΗΡΘΑΤΕ ΣΤΟ BOOKEASY</span>
-          <h2>Πώς θέλετε να συνεχίσετε;</h2>
-          <p>Επιλέξτε τον λογαριασμό που θέλετε να χρησιμοποιήσετε.</p>
-          <Link className="primary-button full" to="/customer-login">
-            Είμαι Πελάτης <ChevronRight size={17} />
-          </Link>
-          <Link className="outline-button full" to="/login">
-            Είμαι Επαγγελματίας <ChevronRight size={17} />
-          </Link>
-        </div>
-      </div>
-    </div>
-  );
+  return <MarketingHome />;
 }
 function NavigateHome({ user }) {
   const navigate = useNavigate();
@@ -378,7 +350,7 @@ function Dashboard({
       </div>
     );
   return (
-    <div className="app-shell">
+    <div className="app-shell dx-shell">
       <aside className={`sidebar ${sidebarOpen ? "open" : ""}`}>
         <div className="sidebar-top">
           <Link className="brand" to="/dashboard">
@@ -436,6 +408,15 @@ function Dashboard({
         </div>
       </aside>
       <main className="main-content">
+        <div className="dx-mobile-bar">
+          <div className="name">
+            <span className="dx-dot" aria-label="Συνδεδεμένο" />
+            <strong>{business.name}</strong>
+          </div>
+          <Link className="dx-add" to={`/b/${business.slug}`}>
+            <Plus size={16} /> <span>Νέο ραντεβού</span>
+          </Link>
+        </div>
         <header className="topbar">
           <button
             className="icon-button mobile-only"
@@ -477,7 +458,9 @@ function Dashboard({
             />
             <Route
               path="appointments"
-              element={<Appointments appointments={appointments} />}
+              element={
+                <Appointments appointments={appointments} business={business} />
+              }
             />
             <Route
               path="customers"
@@ -489,6 +472,7 @@ function Dashboard({
               path="profile"
               element={<CustomerBooking dashboardMode={true} business={business} />}
             />
+            <Route path="plan" element={<Plan business={business} />} />
             <Route
               path="settings"
               element={
@@ -498,7 +482,68 @@ function Dashboard({
           </Routes>
         </div>
       </main>
+      <MobileNav business={business} logout={logout} />
     </div>
+  );
+}
+
+function MobileNav({ business, logout }) {
+  const [open, setOpen] = useState(false);
+  const location = useLocation();
+  useEffect(() => setOpen(false), [location.pathname]);
+  const tabs = [
+    ["/dashboard", "Αρχική", LayoutDashboard, true],
+    ["/dashboard/appointments", "Ραντεβού", Clock3],
+    ["/dashboard/customers", "Πελάτες", Users],
+    ["/dashboard/services", "Υπηρεσίες", Scissors],
+  ];
+  const moreActive = [
+    "/dashboard/calendar",
+    "/dashboard/staff",
+    "/dashboard/profile",
+    "/dashboard/settings",
+  ].includes(location.pathname);
+  return (
+    <>
+      <nav className="dx-bottom-nav" aria-label="Κύρια πλοήγηση">
+        {tabs.map(([to, label, Icon, end]) => (
+          <NavLink
+            key={to}
+            to={to}
+            end={Boolean(end)}
+            className={({ isActive }) => (isActive ? "active" : "")}
+          >
+            <Icon size={21} />
+            {label}
+          </NavLink>
+        ))}
+        <button
+          className={moreActive || open ? "active" : ""}
+          onClick={() => setOpen(true)}
+          aria-haspopup="dialog"
+        >
+          <Menu size={21} />
+          Περισσότερα
+        </button>
+      </nav>
+      {open && (
+        <>
+          <div className="dx-sheet-backdrop" onClick={() => setOpen(false)} />
+          <div className="dx-sheet" role="dialog" aria-label="Περισσότερα">
+            <div className="grab" />
+            <Link to="/dashboard/calendar"><CalendarDays size={20} /> Ημερολόγιο</Link>
+            <Link to="/dashboard/staff"><UserRound size={20} /> Ομάδα</Link>
+            <Link to="/dashboard/profile"><Sparkles size={20} /> Προφίλ επιχείρησης</Link>
+            <Link to="/dashboard/plan"><Sparkles size={20} /> Πακέτο</Link>
+            <Link to="/dashboard/settings"><Settings size={20} /> Ρυθμίσεις</Link>
+            <Link to={`/b/${business.slug}`}><ChevronRight size={20} /> Δημόσια σελίδα</Link>
+            <button className="danger" onClick={logout}>
+              <LogOut size={20} /> Αποσύνδεση
+            </button>
+          </div>
+        </>
+      )}
+    </>
   );
 }
 
@@ -540,12 +585,156 @@ function StatCard({ icon: Icon, label, value, trend, tone }) {
     </article>
   );
 }
+const statusLabels = {
+  pending: "Σε αναμονή",
+  completed: "Ολοκληρωμένο",
+  cancelled: "Ακυρωμένο",
+  confirmed: "Επιβεβαιωμένο",
+};
+const timeOf = (iso) =>
+  new Date(iso).toLocaleTimeString("el-GR", { hour: "2-digit", minute: "2-digit" });
+
+function DashboardHome({
+  business,
+  appointments,
+  todayItems,
+  weekCount,
+  customerCount,
+  serviceCount,
+  onShare,
+  copied,
+}) {
+  const now = Date.now();
+  const sorted = [...todayItems].sort((x, y) =>
+    String(x.starts_at).localeCompare(String(y.starts_at)),
+  );
+  const next = [...appointments.data]
+    .filter(
+      (item) =>
+        item.status !== "cancelled" && new Date(item.starts_at).getTime() >= now,
+    )
+    .sort((x, y) => String(x.starts_at).localeCompare(String(y.starts_at)))[0];
+  const newUrl = `/b/${business.slug}`;
+  return (
+    <div className="dx-home">
+      <section className="dx-hero">
+        <small>Καλημέρα</small>
+        <h1>{business.name}</h1>
+        <div className="dx-hero-row">
+          <div>
+            <div className="dx-big">{todayItems.length}</div>
+            <div className="dx-big-label">σημερινά ραντεβού</div>
+          </div>
+          <Link className="dx-cta" to={newUrl}>
+            <Plus size={18} /> Νέο ραντεβού
+          </Link>
+        </div>
+        <div className="dx-next">
+          <div>
+            <span>Επόμενο ραντεβού</span>
+            <strong>
+              {next
+                ? `${next.customer_name || "Πελάτης"} · ${next.service?.name || "Υπηρεσία"}`
+                : "Κανένα προγραμματισμένο"}
+            </strong>
+          </div>
+          {next && <time>{timeOf(next.starts_at)}</time>}
+        </div>
+      </section>
+
+      <section className="dx-section">
+        <div className="dx-metrics">
+          <div className="dx-metric">
+            <CalendarDays size={20} />
+            <strong>{todayItems.length}</strong>
+            <span>Σήμερα</span>
+          </div>
+          <div className="dx-metric">
+            <Clock3 size={20} />
+            <strong>{weekCount}</strong>
+            <span>Αυτή την εβδομάδα</span>
+          </div>
+          <div className="dx-metric">
+            <Users size={20} />
+            <strong>{customerCount}</strong>
+            <span>Πελάτες</span>
+          </div>
+          <div className="dx-metric">
+            <Scissors size={20} />
+            <strong>{serviceCount}</strong>
+            <span>Υπηρεσίες</span>
+          </div>
+        </div>
+      </section>
+
+      <section className="dx-section">
+        <h2>Γρήγορες ενέργειες</h2>
+        <div className="dx-actions">
+          <Link className="dx-action dark" to={newUrl}>
+            <i><Plus size={20} /></i> Νέο ραντεβού
+          </Link>
+          <button className="dx-action" onClick={onShare}>
+            <i><Copy size={18} /></i>
+            {copied ? "Αντιγράφηκε" : "Κοινοποίηση booking link"}
+          </button>
+          <Link className="dx-action" to="/dashboard/services">
+            <i><Scissors size={18} /></i> Υπηρεσίες
+          </Link>
+          <Link className="dx-action" to="/dashboard/staff">
+            <i><UserRound size={18} /></i> Ομάδα
+          </Link>
+        </div>
+      </section>
+
+      <section className="dx-section">
+        <div className="dx-section-head">
+          <h2>Σήμερα</h2>
+          <Link to="/dashboard/calendar">Ημερολόγιο</Link>
+        </div>
+        {appointments.loading ? (
+          <Loading />
+        ) : sorted.length === 0 ? (
+          <div className="dx-empty">
+            <strong>Δεν υπάρχουν ραντεβού σήμερα</strong>
+            <p>Τα νέα ραντεβού θα εμφανίζονται εδώ.</p>
+            <Link className="dx-cta" to={newUrl}>
+              Δημιούργησε το πρώτο ραντεβού
+            </Link>
+          </div>
+        ) : (
+          <div className="dx-list">
+            {sorted.map((item) => (
+              <div className="dx-appt" key={item.id}>
+                <time>{timeOf(item.starts_at)}</time>
+                <div style={{ minWidth: 0 }}>
+                  <strong>{item.customer_name || "Πελάτης"}</strong>
+                  <span className="sub">
+                    {item.service?.name || "Υπηρεσία"}
+                    {item.staff?.name ? ` · ${item.staff.name}` : ""}
+                  </span>
+                </div>
+                <span className={`dx-pill ${item.status}`}>
+                  {statusLabels[item.status] || statusLabels.confirmed}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <div className="dx-status">
+        <span className="dx-dot" />
+        <span>Η επιχείρηση δέχεται online κρατήσεις</span>
+      </div>
+    </div>
+  );
+}
+
 function Overview({ appointments, business, hours }) {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localKey(new Date());
   const todayItems = appointments.data.filter(
     (appointment) => appointment.appointment_date === today,
   );
-  const items = todayItems.slice(0, 4);
   const weekStart = new Date(`${today}T00:00:00`);
   weekStart.setDate(weekStart.getDate() - ((weekStart.getDay() + 6) % 7));
   const weekEnd = new Date(weekStart);
@@ -580,74 +769,17 @@ function Overview({ appointments, business, hours }) {
   };
   return (
     <>
-      <PageHeader
-        eyebrow="ΣΗΜΕΡΑ"
-        title="Καλημέρα"
-        subtitle={`Μια γρήγορη ματιά στο ${business.name} σήμερα.`}
-        action={
-          <Link className="primary-button" to={`/b/${business.slug}`}>
-            <Plus size={17} /> Νέο ραντεβού
-          </Link>
-        }
+      <DashboardHome
+        business={business}
+        appointments={appointments}
+        todayItems={todayItems}
+        weekCount={weekItems.length}
+        customerCount={customerCount}
+        serviceCount={serviceCount}
+        onShare={sharePublicUrl}
+        copied={copied}
       />
-      <div className="stats-grid">
-        <StatCard
-          icon={CalendarDays}
-          label="Σημερινά ραντεβού"
-          value={items.length}
-          trend="Ενημερωμένα από τη βάση"
-          tone="blue"
-        />
-        <StatCard
-          icon={Users}
-          label="Ενεργοί πελάτες"
-          value={customerCount}
-          trend="Με ραντεβού"
-          tone="green"
-        />
-        <StatCard
-          icon={Scissors}
-          label="Υπηρεσίες"
-          value={serviceCount}
-          trend="Σε ραντεβού"
-          tone="orange"
-        />
-        <StatCard
-          icon={Clock3}
-          label="Ραντεβού εβδομάδας"
-          value={weekItems.length}
-          trend="Συνολικές κρατήσεις"
-          tone="violet"
-        />
-      </div>
       <div className="dashboard-grid">
-        <section className="panel schedule">
-          <div className="panel-heading">
-            <div>
-              <h2>Σημερινό πρόγραμμα</h2>
-              <p>
-                {appointments.loading
-                  ? "Φόρτωση..."
-                  : `${items.length} ραντεβού για σήμερα`}
-              </p>
-            </div>
-            <Link to="/dashboard/calendar" className="text-link">
-              Προβολή ημερολογίου <ChevronRight size={15} />
-            </Link>
-          </div>
-          {appointments.loading ? (
-            <Loading />
-          ) : (
-            <div className="appointment-list">
-              {items.map((appointment) => (
-                <AppointmentRow
-                  key={appointment.id}
-                  appointment={appointment}
-                />
-              ))}
-            </div>
-          )}
-        </section>
         <section className="panel availability">
           <div className="panel-heading">
             <div>
@@ -854,58 +986,70 @@ function AppointmentRow({ appointment }) {
     </div>
   );
 }
+const localKey = (date) =>
+  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+const apptDay = (item) =>
+  item.appointment_date || localKey(new Date(item.starts_at));
+const startOfDay = (date) => {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  return d;
+};
+const mondayOf = (date) => {
+  const d = startOfDay(date);
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+  return d;
+};
+
 function Calendar({ appointments }) {
-  const [weekStart, setWeekStart] = useState(() => {
-    const start = new Date();
-    start.setHours(0, 0, 0, 0);
-    start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
-    return start;
-  });
+  const [selected, setSelected] = useState(() => startOfDay(new Date()));
+  const weekStart = mondayOf(selected);
   const weekDays = Array.from({ length: 7 }, (_, index) => {
     const day = new Date(weekStart);
     day.setDate(day.getDate() + index);
     return day;
   });
-  const shiftWeek = (amount) => {
-    const next = new Date(weekStart);
-    next.setDate(next.getDate() + amount * 7);
-    setWeekStart(next);
+  const shiftDays = (amount) => {
+    const next = new Date(selected);
+    next.setDate(next.getDate() + amount);
+    setSelected(next);
   };
-  const resetWeek = () => {
-    const start = new Date();
-    start.setHours(0, 0, 0, 0);
-    start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
-    setWeekStart(start);
-  };
+  const shiftWeek = (amount) => shiftDays(amount * 7);
+  const resetWeek = () => setSelected(startOfDay(new Date()));
   const isCurrentWeek = weekDays.some(
     (day) => day.toDateString() === new Date().toDateString(),
   );
+  const selectedKey = localKey(selected);
+  const dayItems = appointments.data
+    .filter((item) => apptDay(item) === selectedKey)
+    .sort((x, y) => String(x.starts_at).localeCompare(String(y.starts_at)));
   return (
     <>
-      <PageHeader
-        eyebrow="ΗΜΕΡΟΛΟΓΙΟ"
-        title="Το ημερολόγιό σας"
-        subtitle="Δείτε και διαχειριστείτε όλα τα ραντεβού σας."
-      />
-      <div className="calendar-toolbar">
-        <button className="icon-button" onClick={() => shiftWeek(-1)}>
-          <ChevronLeft size={18} />
-        </button>
-        <strong>
-          {isCurrentWeek
-            ? "Αυτή η εβδομάδα"
-            : `${weekDays[0].toLocaleDateString("el-GR", { day: "numeric", month: "short" })} – ${weekDays[6].toLocaleDateString("el-GR", { day: "numeric", month: "short" })}`}
-        </strong>
-        <button className="icon-button" onClick={() => shiftWeek(1)}>
-          <ChevronRight size={18} />
-        </button>
-        <button className="outline-button today" onClick={resetWeek}>
-          Σήμερα
-        </button>
-      </div>
-      <section className="panel calendar-panel">
-        <div className="week-grid">
-          {weekDays.map((day) => (
+      <div className="dx-desktop-only">
+        <PageHeader
+          eyebrow="ΗΜΕΡΟΛΟΓΙΟ"
+          title="Το ημερολόγιό σας"
+          subtitle="Δείτε και διαχειριστείτε όλα τα ραντεβού σας."
+        />
+        <div className="calendar-toolbar">
+          <button className="icon-button" onClick={() => shiftWeek(-1)}>
+            <ChevronLeft size={18} />
+          </button>
+          <strong>
+            {isCurrentWeek
+              ? "Αυτή η εβδομάδα"
+              : `${weekDays[0].toLocaleDateString("el-GR", { day: "numeric", month: "short" })} – ${weekDays[6].toLocaleDateString("el-GR", { day: "numeric", month: "short" })}`}
+          </strong>
+          <button className="icon-button" onClick={() => shiftWeek(1)}>
+            <ChevronRight size={18} />
+          </button>
+          <button className="outline-button today" onClick={resetWeek}>
+            Σήμερα
+          </button>
+        </div>
+        <section className="panel calendar-panel">
+          <div className="week-grid">
+            {weekDays.map((day) => (
               <div
                 className={
                   day.toDateString() === new Date().toDateString()
@@ -920,46 +1064,328 @@ function Calendar({ appointments }) {
                 <span>{day.getDate()}</span>
               </div>
             ))}
+          </div>
+          <div className="calendar-body">
+            {appointments.data
+              .filter((appointment) =>
+                weekDays.some(
+                  (day) =>
+                    apptDay(appointment) === localKey(day),
+                ),
+              )
+              .map((appointment) => {
+                const column = weekDays.findIndex(
+                  (day) =>
+                    apptDay(appointment) === localKey(day),
+                );
+                return (
+                  <div
+                    key={appointment.id}
+                    className="calendar-event"
+                    style={{ gridColumn: column + 1 }}
+                  >
+                    <b>
+                      {new Date(appointment.starts_at).toLocaleTimeString("el-GR", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </b>
+                    <span>{appointment.customer_name}</span>
+                    <small>{appointment.service?.name || "Υπηρεσία"}</small>
+                  </div>
+                );
+              })}
+          </div>
+        </section>
+      </div>
+
+      <div className="dx-mobile-only dx-agenda">
+        <div className="dx-page-head">
+          <div>
+            <h1>Ημερολόγιο</h1>
+            <p>
+              {selected.toLocaleDateString("el-GR", {
+                month: "long",
+                year: "numeric",
+              })}
+            </p>
+          </div>
+          <button className="dx-chip" onClick={resetWeek}>
+            Σήμερα
+          </button>
         </div>
-        <div className="calendar-body">
-          {appointments.data
-            .filter((appointment) =>
-              weekDays.some(
-                (day) =>
-                  appointment.appointment_date ===
-                  day.toISOString().slice(0, 10),
-              ),
-            )
-            .map((appointment) => {
-              const column = weekDays.findIndex(
-                (day) =>
-                  appointment.appointment_date ===
-                  day.toISOString().slice(0, 10),
-              );
-              return (
-                <div
-                  key={appointment.id}
-                  className="calendar-event"
-                  style={{ gridColumn: column + 1 }}
-                >
-                  <b>
-                    {new Date(appointment.starts_at).toLocaleTimeString("el-GR", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </b>
-                  <span>{appointment.customer_name}</span>
-                  <small>{appointment.service?.name || "Υπηρεσία"}</small>
-                </div>
-              );
+        <div className="dx-daynav">
+          <button aria-label="Προηγούμενη ημέρα" onClick={() => shiftDays(-1)}>
+            <ChevronLeft size={22} />
+          </button>
+          <strong>
+            {selected.toLocaleDateString("el-GR", {
+              weekday: "long",
+              day: "numeric",
+              month: "long",
             })}
+          </strong>
+          <button aria-label="Επόμενη ημέρα" onClick={() => shiftDays(1)}>
+            <ChevronRight size={22} />
+          </button>
         </div>
-      </section>
+        <div className="dx-weekstrip">
+          {weekDays.map((day) => {
+            const key = localKey(day);
+            const count = appointments.data.filter(
+              (item) => apptDay(item) === key,
+            ).length;
+            return (
+              <button
+                key={key}
+                className={key === selectedKey ? "on" : ""}
+                onClick={() => setSelected(day)}
+                aria-label={day.toLocaleDateString("el-GR", {
+                  weekday: "long",
+                  day: "numeric",
+                  month: "long",
+                })}
+              >
+                <span>
+                  {day.toLocaleDateString("el-GR", { weekday: "narrow" })}
+                </span>
+                <b>{day.getDate()}</b>
+                <i className={count ? "has" : ""} />
+              </button>
+            );
+          })}
+        </div>
+        {appointments.loading ? (
+          <Loading />
+        ) : appointments.error ? (
+          <div className="dx-empty">
+            <strong>Δεν φορτώθηκαν τα ραντεβού</strong>
+            <p>{appointments.error}</p>
+          </div>
+        ) : dayItems.length === 0 ? (
+          <div className="dx-empty">
+            <strong>Ελεύθερη ημέρα</strong>
+            <p>Δεν υπάρχουν ραντεβού για αυτή την ημέρα.</p>
+          </div>
+        ) : (
+          <div className="dx-timeline">
+            {dayItems.map((item) => (
+              <div className={`dx-slot ${item.status}`} key={item.id}>
+                <time>{timeOf(item.starts_at)}</time>
+                <div className="dx-slot-card">
+                  <div className="row">
+                    <strong>{item.customer_name || "Πελάτης"}</strong>
+                    <span className={`dx-pill ${item.status}`}>
+                      {statusLabels[item.status] || statusLabels.confirmed}
+                    </span>
+                  </div>
+                  <span className="sub">
+                    {item.service?.name || "Υπηρεσία"}
+                    {item.service?.duration_minutes
+                      ? ` · ${item.service.duration_minutes}′`
+                      : ""}
+                    {item.staff?.name ? ` · ${item.staff.name}` : ""}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </>
   );
 }
-function Appointments({ appointments }) {
+const PLAN_STATUS_LABELS = {
+  trialing: "Δοκιμαστική περίοδος",
+  active: "Ενεργή",
+  past_due: "Εκκρεμεί πληρωμή",
+  unpaid: "Απλήρωτη",
+  canceled: "Ακυρωμένη",
+  incomplete: "Ημιτελής",
+  incomplete_expired: "Έληξε",
+  paused: "Σε παύση",
+};
+const PLAN_OPTIONS = [
+  ["basic", "Basic", "Για να ξεκινήσεις με online κρατήσεις και διαχείριση ραντεβού."],
+  ["plus", "Plus", "Για επιχειρήσεις που θέλουν περισσότερες δυνατότητες."],
+];
+const planDate = (value) =>
+  value ? new Date(value).toLocaleDateString("el-GR", { dateStyle: "long" }) : "—";
+
+const checkoutErrorText = async (err) => {
+  const status = err?.context?.status;
+  if (status === 401) return "Χρειάζεται σύνδεση. Συνδεθείτε ξανά και δοκιμάστε.";
+  if (status === 403) return "Μόνο ο ιδιοκτήτης της επιχείρησης μπορεί να αλλάξει πακέτο.";
+  if (status === 409) return "Υπάρχει ήδη συνδρομή για αυτή την επιχείρηση.";
+  return "Προσωρινό πρόβλημα. Δοκιμάστε ξανά σε λίγο.";
+};
+const TERMINAL_SUB_STATUSES = ["canceled", "incomplete_expired"];
+
+function Plan({ business }) {
+  const location = useLocation();
+  const paymentParam = new URLSearchParams(location.search).get("payment");
+  const [sub, setSub] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [busyPlan, setBusyPlan] = useState("");
+  const [waiting, setWaiting] = useState(paymentParam === "success");
+  const [timedOut, setTimedOut] = useState(false);
+
+  const load = useCallback(async () => {
+    if (!supabase) {
+      setError(SUPABASE_CONFIG_ERROR);
+      setLoading(false);
+      return null;
+    }
+    const { data, error: loadError } = await supabase
+      .from("subscriptions")
+      .select("*")
+      .eq("business_id", business.id)
+      .maybeSingle();
+    if (loadError) setError(errorText(loadError));
+    else setSub(data);
+    setLoading(false);
+    return loadError ? null : data;
+  }, [business.id]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  // After ?payment=success, success is only confirmed from the database (set by the Stripe webhook).
+  useEffect(() => {
+    if (paymentParam !== "success") return undefined;
+    let alive = true;
+    let tries = 0;
+    setWaiting(true);
+    setTimedOut(false);
+    const timer = setInterval(async () => {
+      tries += 1;
+      const data = await load();
+      if (!alive) return;
+      if (data?.status === "active" && data.stripe_subscription_id) {
+        setWaiting(false);
+        clearInterval(timer);
+      } else if (tries >= 10) {
+        setWaiting(false);
+        setTimedOut(true);
+        clearInterval(timer);
+      }
+    }, 3000);
+    load().then((data) => {
+      if (alive && data?.status === "active" && data.stripe_subscription_id) {
+        setWaiting(false);
+        clearInterval(timer);
+      }
+    });
+    return () => {
+      alive = false;
+      clearInterval(timer);
+    };
+  }, [paymentParam, load]);
+
+  const upgrade = async (plan) => {
+    setError("");
+    setBusyPlan(plan);
+    try {
+      const { data, error: invokeError } = await supabase.functions.invoke(
+        "create-checkout",
+        { body: { plan, businessId: business.id } },
+      );
+      if (invokeError) throw invokeError;
+      if (!data?.url) throw new Error("no_url");
+      window.location.href = data.url;
+    } catch (err) {
+      setError(await checkoutErrorText(err));
+      setBusyPlan("");
+    }
+  };
+
+  const hasStripeSub =
+    Boolean(sub?.stripe_subscription_id) && !TERMINAL_SUB_STATUSES.includes(sub?.status);
+  const trialActive =
+    sub?.status === "trialing" && sub.trial_end && new Date(sub.trial_end) > new Date();
+  const periodOk =
+    !sub?.current_period_end || new Date(sub.current_period_end) > new Date();
+  const hasAccess = (sub?.status === "active" && periodOk) || trialActive;
+  const statusLabel = !sub
+    ? "Χωρίς συνδρομή"
+    : sub.status === "trialing" && !trialActive
+      ? "Έληξε η δοκιμή"
+      : PLAN_STATUS_LABELS[sub.status] || sub.status;
+
+  return (
+    <>
+      <PageHeader
+        eyebrow="ΠΑΚΕΤΟ"
+        title="Το πακέτο σας"
+        subtitle="Δείτε την κατάσταση της συνδρομής σας και αναβαθμίστε."
+      />
+      <Notice message={error} />
+      {paymentParam === "cancelled" && <Notice message="Η πληρωμή ακυρώθηκε. Δεν έγινε καμία χρέωση." />}
+      {waiting && <Notice message="Αναμονή επιβεβαίωσης της πληρωμής από το σύστημα..." />}
+      {timedOut && !waiting && sub?.status !== "active" && (
+        <Notice message="Η πληρωμή δεν έχει επιβεβαιωθεί ακόμα. Ανανεώστε σε λίγο." />
+      )}
+      {paymentParam === "success" && sub?.status === "active" && sub.stripe_subscription_id && (
+        <Notice success message="Η συνδρομή σας ενεργοποιήθηκε." />
+      )}
+      {loading ? (
+        <Loading />
+      ) : (
+        <>
+          <section className="panel dx-plan-status">
+            <div>
+              <small>Τρέχον πακέτο</small>
+              <strong>{hasAccess ? (sub.plan === "plus" ? "Plus" : "Basic") : "Περιορισμένη πρόσβαση"}</strong>
+            </div>
+            <span className={`dx-pill ${hasAccess ? "" : "cancelled"}`}>{statusLabel}</span>
+            {sub?.status === "trialing" && sub.trial_end && (
+              <p>Η δοκιμαστική περίοδος λήγει στις {planDate(sub.trial_end)}.</p>
+            )}
+            {sub?.status === "active" && sub.current_period_end && (
+              <p>
+                {sub.cancel_at_period_end
+                  ? `Η συνδρομή θα ακυρωθεί στις ${planDate(sub.current_period_end)}.`
+                  : `Ανανέωση στις ${planDate(sub.current_period_end)}.`}
+              </p>
+            )}
+            {!hasAccess && (
+              <p>Επιλέξτε πακέτο για να συνεχίσετε να χρησιμοποιείτε τον AI βοηθό.</p>
+            )}
+          </section>
+          <div className="dx-plan-grid">
+            {PLAN_OPTIONS.map(([key, name, desc]) => {
+              const current = hasAccess && sub?.status === "active" && sub.plan === key;
+              return (
+                <section className="panel dx-plan-card" key={key}>
+                  <h3>{name}</h3>
+                  <p>{desc}</p>
+                  <button
+                    className="primary-button"
+                    disabled={current || Boolean(busyPlan) || hasStripeSub}
+                    onClick={() => upgrade(key)}
+                  >
+                    {current
+                      ? "Τρέχον πακέτο"
+                      : busyPlan === key
+                        ? "Μεταφορά..."
+                        : `Επιλογή ${name}`}
+                  </button>
+                </section>
+              );
+            })}
+          </div>
+        </>
+      )}
+    </>
+  );
+}
+function Appointments({ appointments, business }) {
   const [view, setView] = useState("today");
+  const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [filterOpen, setFilterOpen] = useState(false);
   const update = async (id, status) => {
     if (supabase) {
       const { error } = await supabase
@@ -974,10 +1400,44 @@ function Appointments({ appointments }) {
   today.setHours(0, 0, 0, 0);
 
   const visibleAppointments = appointments.data.filter((item) => {
-    const appointmentDate = new Date(item.starts_at);
-    appointmentDate.setHours(0, 0, 0, 0);
-    return view === "history" ? appointmentDate < today : appointmentDate >= today;
+    const appointmentDate = new Date(`${apptDay(item)}T00:00:00`);
+    const inView =
+      view === "history" ? appointmentDate < today : appointmentDate >= today;
+    const needle = query.trim().toLowerCase();
+    const matchesQuery =
+      !needle ||
+      [item.customer_name, item.service?.name, item.staff?.name].some((v) =>
+        String(v || "").toLowerCase().includes(needle),
+      );
+    const matchesStatus = statusFilter === "all" || item.status === statusFilter;
+    return inView && matchesQuery && matchesStatus;
   });
+  const sortedVisible = [...visibleAppointments].sort((x, y) =>
+    view === "history"
+      ? String(y.starts_at).localeCompare(String(x.starts_at))
+      : String(x.starts_at).localeCompare(String(y.starts_at)),
+  );
+  const todayKey = localKey(today);
+  const groups =
+    view === "history"
+      ? [["Παλαιότερα", sortedVisible]]
+      : [
+          [
+            "Σήμερα",
+            sortedVisible.filter((i) => apptDay(i) === todayKey),
+          ],
+          [
+            "Επόμενα",
+            sortedVisible.filter((i) => apptDay(i) !== todayKey),
+          ],
+        ];
+  const filterOptions = [
+    ["all", "Όλα"],
+    ["pending", "Σε αναμονή"],
+    ["confirmed", "Επιβεβαιωμένα"],
+    ["completed", "Ολοκληρωμένα"],
+    ["cancelled", "Ακυρωμένα"],
+  ];
 
   const remove = async (id) => {
     if (supabase) {
@@ -991,6 +1451,141 @@ function Appointments({ appointments }) {
   };
   return (
     <>
+      <div className="dx-mobile-only dx-appts">
+        <div className="dx-page-head">
+          <div>
+            <h1>Ραντεβού</h1>
+            <p>
+              {view === "history"
+                ? "Παλαιότερα ραντεβού"
+                : today.toLocaleDateString("el-GR", {
+                    weekday: "long",
+                    day: "numeric",
+                    month: "long",
+                  })}
+            </p>
+          </div>
+          {business?.slug && (
+            <Link className="dx-chip primary" to={`/b/${business.slug}`}>
+              <Plus size={16} /> Νέο
+            </Link>
+          )}
+        </div>
+        <div className="dx-segment">
+          <button className={view === "today" ? "on" : ""} onClick={() => setView("today")}>
+            Σήμερα & επόμενα
+          </button>
+          <button className={view === "history" ? "on" : ""} onClick={() => setView("history")}>
+            Ιστορικό
+          </button>
+        </div>
+        <div className="dx-searchrow">
+          <label className="dx-search">
+            <Search size={18} />
+            <input
+              type="search"
+              placeholder="Αναζήτηση πελάτη ή υπηρεσίας"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+          </label>
+          <button
+            className={`dx-filterbtn ${statusFilter !== "all" ? "on" : ""}`}
+            onClick={() => setFilterOpen(true)}
+            aria-label="Φίλτρα"
+          >
+            <SlidersHorizontal size={20} />
+          </button>
+        </div>
+        {appointments.loading ? (
+          <Loading />
+        ) : appointments.error ? (
+          <div className="dx-empty">
+            <strong>Δεν φορτώθηκαν τα ραντεβού</strong>
+            <p>{appointments.error}</p>
+          </div>
+        ) : sortedVisible.length === 0 ? (
+          <div className="dx-empty">
+            <strong>Δεν βρέθηκαν ραντεβού</strong>
+            <p>Δοκιμάστε άλλη αναζήτηση ή φίλτρο.</p>
+          </div>
+        ) : (
+          groups
+            .filter(([, list]) => list.length)
+            .map(([title, list]) => (
+              <section className="dx-group" key={title}>
+                <h2>
+                  {title} <span>{list.length}</span>
+                </h2>
+                <div className="dx-list">
+                  {list.map((item) => (
+                    <article className="dx-acard" key={item.id}>
+                      <div className="top">
+                        <time>
+                          {timeOf(item.starts_at)}
+                          {view === "history" || title === "Επόμενα" ? (
+                            <small>
+                              {new Date(item.starts_at).toLocaleDateString("el-GR", {
+                                day: "numeric",
+                                month: "short",
+                              })}
+                            </small>
+                          ) : null}
+                        </time>
+                        <span className={`dx-pill ${item.status}`}>
+                          {statusLabels[item.status] || item.status}
+                        </span>
+                      </div>
+                      <strong>{item.customer_name || "Πελάτης"}</strong>
+                      <span className="sub">
+                        {item.service?.name || "Υπηρεσία"}
+                        {item.staff?.name ? ` · ${item.staff.name}` : ""}
+                      </span>
+                      <div className="acts">
+                        <button onClick={() => update(item.id, "confirmed")}>
+                          ✓ Επιβεβαίωση
+                        </button>
+                        <button onClick={() => update(item.id, "completed")}>
+                          ○ Ολοκλήρωση
+                        </button>
+                        <button
+                          className="danger"
+                          aria-label="Διαγραφή"
+                          onClick={() => remove(item.id)}
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </section>
+            ))
+        )}
+      </div>
+      {filterOpen && (
+        <>
+          <div className="dx-sheet-backdrop" onClick={() => setFilterOpen(false)} />
+          <div className="dx-sheet" role="dialog" aria-label="Φίλτρα">
+            <div className="grab" />
+            <h3>Κατάσταση</h3>
+            {filterOptions.map(([value, label]) => (
+              <button
+                key={value}
+                className={statusFilter === value ? "sel" : ""}
+                onClick={() => {
+                  setStatusFilter(value);
+                  setFilterOpen(false);
+                }}
+              >
+                {label}
+                {statusFilter === value && <span>✓</span>}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+      <div className="dx-desktop-only">
       <PageHeader
         eyebrow="ΡΑΝΤΕΒΟΥ"
         title="Όλα τα ραντεβού"
@@ -1069,10 +1664,10 @@ function Appointments({ appointments }) {
           </tbody>
         </table>
       </section>
+      </div>
     </>
   );
 }
-
 function Editor({ title, value, fields, onClose, onSave }) {
   const [form, setForm] = useState(value);
   return (

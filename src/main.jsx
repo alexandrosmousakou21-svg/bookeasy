@@ -6,6 +6,7 @@ import App from './App'
 import './styles.css'
 import './functional.css'
 import './customer.css'
+import './dashboard.css'
 
 CapacitorApp.addListener('appUrlOpen', ({ url }) => {
   try {

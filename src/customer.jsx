@@ -24,6 +24,22 @@ const errorText = (error) =>
   error?.code === "23P01"
     ? "Η ώρα έχει ήδη κρατηθεί. Επιλέξτε άλλη διαθέσιμη ώρα."
     : error?.message || "Παρουσιάστηκε σφάλμα. Δοκιμάστε ξανά.";
+const BOOKING_ERRORS = {
+  slot_unavailable: "Η ώρα έχει ήδη κρατηθεί. Επιλέξτε άλλη διαθέσιμη ώρα.",
+  slot_in_past: "Δεν μπορείτε να κλείσετε ραντεβού στο παρελθόν.",
+  outside_working_hours: "Η ώρα είναι εκτός ωραρίου λειτουργίας.",
+  invalid_local_time: "Η επιλεγμένη ώρα δεν είναι έγκυρη.",
+  booking_limit_reached:
+    "Έχετε ήδη πολλά ενεργά μελλοντικά ραντεβού σε αυτή την επιχείρηση.",
+  staff_unavailable: "Ο επαγγελματίας δεν είναι διαθέσιμος.",
+  service_unavailable: "Η υπηρεσία δεν είναι διαθέσιμη.",
+  staff_service_mismatch: "Ο επαγγελματίας δεν προσφέρει αυτή την υπηρεσία.",
+  invalid_customer_name: "Ελέγξτε το όνομα που συμπληρώσατε.",
+  invalid_customer_phone: "Ελέγξτε το τηλέφωνο που συμπληρώσατε.",
+  not_authenticated: "Συνδεθείτε για να κλείσετε ραντεβού.",
+};
+const bookingErrorText = (error) =>
+  BOOKING_ERRORS[error?.message] || errorText(error);
 const safeReturnPath = (value, fallback = "/customer") => {
   if (!value || !value.startsWith("/") || value.startsWith("//")) return fallback;
   return value;
@@ -694,8 +710,6 @@ export function CustomerBooking({ dashboardMode = false, business: dashboardBusi
       );
       return;
     }
-    const starts = new Date(`${date}T${time}:00`);
-    const ends = new Date(starts.getTime() + service.duration_minutes * 60000);
     const { error: profileError } = await supabase
       .from("customer_profiles")
       .upsert(
@@ -712,29 +726,22 @@ export function CustomerBooking({ dashboardMode = false, business: dashboardBusi
       setBookingError(errorText(profileError));
       return;
     }
-    const { data: createdAppointment, error: insertError } = await supabase
-      .from("appointments")
-      .insert({
-        business_id: data.business.id,
-        customer_id: user.id,
-        staff_id: selectedStaff.id,
-        service_id: service.id,
-        appointment_date: date,
-        start_time: time,
-        end_time: `${String(ends.getHours()).padStart(2, "0")}:${String(ends.getMinutes()).padStart(2, "0")}:00`,
-        status: "booked",
-        customer_name: details.name,
-        customer_phone: details.phone,
-        customer_email: details.email,
-        starts_at: starts.toISOString(),
-        ends_at: ends.toISOString(),
-      })
-      .select(
-        "id,business_id,customer_id,staff_id,service_id,appointment_date,start_time,end_time,status,customer_name,customer_phone,customer_email",
-      )
-      .single();
+    // Server-side booking: the database derives status, customer, duration and timestamps
+    // (business timezone) and validates staff/service/working hours.
+    const { data: createdAppointment, error: insertError } = await supabase.rpc(
+      "book_appointment",
+      {
+        p_business_id: data.business.id,
+        p_staff_id: selectedStaff.id,
+        p_service_id: service.id,
+        p_date: date,
+        p_time: time,
+        p_customer_name: details.name,
+        p_customer_phone: details.phone,
+      },
+    );
     if (insertError) {
-      setBookingError(errorText(insertError));
+      setBookingError(bookingErrorText(insertError));
       return;
     }
     const { error: refreshError } = await supabase
@@ -854,6 +861,15 @@ export function CustomerBooking({ dashboardMode = false, business: dashboardBusi
               <Link className="outline-button" to="/my-appointments">
                 Τα ραντεβού μου
               </Link>
+              <div className="booking-install-cta">
+                <p>
+                  Διαχειρίσου τα ραντεβού σου και λάβε ειδοποιήσεις πιο εύκολα
+                  μέσα από την εφαρμογή.
+                </p>
+                <Link className="primary-button" to="/install">
+                  Κατέβασε το BookEasy App
+                </Link>
+              </div>
             </div>
           ) : (
             <>
