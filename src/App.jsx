@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import {
   Link,
   NavLink,
@@ -9,16 +9,24 @@ import {
   useParams,
 } from "react-router-dom";
 import {
+  Bell,
   CalendarDays,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
   Clock3,
   Copy,
+  CheckCheck,
+  CreditCard,
+  Inbox,
   LayoutDashboard,
   LogOut,
+  Mail,
   Menu,
+  MessageCircle,
   Plus,
+  RefreshCw,
+  Send,
   Scissors,
   Settings,
   Sparkles,
@@ -32,13 +40,29 @@ import {
   isSupabaseConfigured,
   SUPABASE_CONFIG_ERROR,
 } from "./lib/supabase";
-import {
-  CustomerAppointmentsPage,
-  CustomerAuth,
-  CustomerBooking,
-  CustomerHome,
-  CustomerProfile,
-} from "./customer";
+import ErrorBoundary from "./ErrorBoundary";
+import { reportCriticalError } from "./lib/errorReporting";
+import { invokeWithRetry } from "./lib/functions";
+
+const customerModule = () => import("./customer");
+const CustomerAppointmentsPage = lazy(() =>
+  customerModule().then((module) => ({ default: module.CustomerAppointmentsPage })),
+);
+const CustomerAuth = lazy(() =>
+  customerModule().then((module) => ({ default: module.CustomerAuth })),
+);
+const CustomerBooking = lazy(() =>
+  customerModule().then((module) => ({ default: module.CustomerBooking })),
+);
+const CustomerHome = lazy(() =>
+  customerModule().then((module) => ({ default: module.CustomerHome })),
+);
+const CustomerProfile = lazy(() =>
+  customerModule().then((module) => ({ default: module.CustomerProfile })),
+);
+const CustomerSupportPage = lazy(() =>
+  customerModule().then((module) => ({ default: module.CustomerSupportPage })),
+);
 
 const dayNames = [
   "Κυριακή",
@@ -49,10 +73,19 @@ const dayNames = [
   "Παρασκευή",
   "Σάββατο",
 ];
+const BOOKEASY_SUPPORT_EMAIL = (import.meta.env.VITE_BOOKEASY_SUPPORT_EMAIL || "").trim();
+const WEB_PUSH_VAPID_PUBLIC_KEY = (import.meta.env.VITE_WEB_PUSH_VAPID_PUBLIC_KEY || "").trim();
+function decodeVapidPublicKey(value) {
+  const base64 = value.replace(/-/g, "+").replace(/_/g, "/");
+  const padded = base64 + "=".repeat((4 - (base64.length % 4)) % 4);
+  return Uint8Array.from(atob(padded), (character) => character.charCodeAt(0));
+}
 const errorText = (error) =>
   error?.code === "23P01"
     ? "Η ώρα έχει ήδη κρατηθεί. Επιλέξτε άλλη διαθέσιμη ώρα."
-    : error?.message || "Παρουσιάστηκε σφάλμα. Δοκιμάστε ξανά.";
+    : error?.code === "23505"
+      ? "Η καταχώρηση υπάρχει ήδη. Ανανεώστε τη σελίδα και δοκιμάστε ξανά."
+      : "Παρουσιάστηκε πρόβλημα. Ελέγξτε τη σύνδεσή σας και δοκιμάστε ξανά.";
 const slugify = (value) => {
   const greekMap = {
     ά: "a",
@@ -110,12 +143,19 @@ function useAuth() {
       return undefined;
     }
     let active = true;
-    supabase.auth.getSession().then(({ data }) => {
-      if (active) {
-        setSession(data.session);
-        setLoading(false);
-      }
-    });
+    supabase.auth
+      .getSession()
+      .then(({ data, error }) => {
+        if (error) reportCriticalError(error, { feature: "authentication", operation: "load-session" });
+        if (active) {
+          setSession(data.session);
+          setLoading(false);
+        }
+      })
+      .catch((error) => {
+        reportCriticalError(error, { feature: "authentication", operation: "load-session" });
+        if (active) setLoading(false);
+      });
     const { data: listener } = supabase.auth.onAuthStateChange((_event, next) =>
       setSession(next),
     );
@@ -143,17 +183,34 @@ function useData(table, id, options = {}) {
       return [];
     }
     setLoading(true);
-    const { data: rows, error: requestError } = await supabase
-      .from(table)
-      .select(options.select || "*")
-      .eq(options.column || "business_id", id)
-      .order(options.order || "created_at", {
-        ascending: options.order === "day_of_week" || options.order === "name",
+    try {
+      const { data: rows, error: requestError } = await supabase
+        .from(table)
+        .select(options.select || "*")
+        .eq(options.column || "business_id", id)
+        .order(options.order || "created_at", {
+          ascending: options.order === "day_of_week" || options.order === "name",
+        });
+      if (requestError) {
+        reportCriticalError(requestError, {
+          feature: "supabase-data",
+          operation: `load-${table}`,
+        });
+      }
+      setError(requestError ? errorText(requestError) : "");
+      setData(rows || []);
+      return rows || [];
+    } catch (requestError) {
+      reportCriticalError(requestError, {
+        feature: "supabase-data",
+        operation: `load-${table}`,
       });
-    setError(requestError ? errorText(requestError) : "");
-    setData(rows || []);
-    setLoading(false);
-    return rows || [];
+      setError("Δεν ήταν δυνατή η φόρτωση των στοιχείων. Δοκιμάστε ξανά.");
+      setData([]);
+      return [];
+    } finally {
+      setLoading(false);
+    }
   };
   useEffect(() => {
     reload();
@@ -193,16 +250,35 @@ function CustomerAuthRedirect({ mode }) {
     const returnTo = new URLSearchParams(window.location.search).get(
       "returnTo",
     );
-    if (returnTo) sessionStorage.setItem("bookeasy-return-to", returnTo);
+    if (returnTo) {
+      try {
+        sessionStorage.setItem("bookeasy-return-to", returnTo);
+      } catch {
+        // The login form also carries returnTo in its URL.
+      }
+    }
   }, []);
   useEffect(() => {
-    const returnTo = sessionStorage.getItem("bookeasy-return-to");
+    let returnTo = null;
+    try {
+      returnTo = sessionStorage.getItem("bookeasy-return-to");
+    } catch {
+      // Authentication can proceed without session storage.
+    }
     if (auth.user && returnTo) {
-      sessionStorage.removeItem("bookeasy-return-to");
+      try {
+        sessionStorage.removeItem("bookeasy-return-to");
+      } catch {
+        // No persisted redirect to clean up.
+      }
       navigate(returnTo, { replace: true });
     }
   }, [auth.user, navigate]);
   return <CustomerAuth mode={mode} />;
+}
+
+function RouteBoundary({ children }) {
+  return <ErrorBoundary>{children}</ErrorBoundary>;
 }
 
 function App() {
@@ -222,15 +298,25 @@ function App() {
         setBusinessLoading(false);
         return;
       }
-      const { data, error } = await supabase
-        .from("businesses")
-        .select("*")
-        .eq("owner_id", auth.user.id)
-        .maybeSingle();
-      if (active) {
-        setBusiness(data);
-        setBusinessError(error ? errorText(error) : "");
-        setBusinessLoading(false);
+      try {
+        const { data, error } = await supabase
+          .from("businesses")
+          .select("*")
+          .eq("owner_id", auth.user.id)
+          .maybeSingle();
+        if (error) reportCriticalError(error, { feature: "business-dashboard", operation: "load-business" });
+        if (active) {
+          setBusiness(data);
+          setBusinessError(error ? errorText(error) : "");
+        }
+      } catch (error) {
+        reportCriticalError(error, { feature: "business-dashboard", operation: "load-business" });
+        if (active) {
+          setBusiness(null);
+          setBusinessError("Δεν ήταν δυνατή η φόρτωση της επιχείρησης. Δοκιμάστε ξανά.");
+        }
+      } finally {
+        if (active) setBusinessLoading(false);
       }
     }
     load();
@@ -243,39 +329,44 @@ function App() {
     setBusiness(null);
   };
   return (
+    <Suspense fallback={<Loading />}>
     <Routes>
-      <Route path="/" element={<HomePage />} />
-      <Route path="/login" element={<AuthPage mode="login" />} />
-      <Route path="/register" element={<AuthPage mode="register" />} />
-      <Route path="/customer" element={<CustomerHome />} />
+      <Route path="/" element={<RouteBoundary><HomePage /></RouteBoundary>} />
+      <Route path="/login" element={<RouteBoundary><AuthPage mode="login" /></RouteBoundary>} />
+      <Route path="/register" element={<RouteBoundary><AuthPage mode="register" /></RouteBoundary>} />
+      <Route path="/customer" element={<RouteBoundary><CustomerHome /></RouteBoundary>} />
       <Route
         path="/customer-login"
-        element={<CustomerAuthRedirect mode="login" />}
+        element={<RouteBoundary><CustomerAuthRedirect mode="login" /></RouteBoundary>}
       />
       <Route
         path="/customer-register"
-        element={<CustomerAuthRedirect mode="register" />}
+        element={<RouteBoundary><CustomerAuthRedirect mode="register" /></RouteBoundary>}
       />
-      <Route path="/customer/profile" element={<CustomerProfile />} />
-      <Route path="/book/:slug" element={<CustomerBooking />} />
-      <Route path="/b/:slug" element={<CustomerBooking />} />
-      <Route path="/my-appointments" element={<CustomerAppointmentsPage />} />
+      <Route path="/customer/profile" element={<RouteBoundary><CustomerProfile /></RouteBoundary>} />
+      <Route path="/customer/support" element={<RouteBoundary><CustomerSupportPage /></RouteBoundary>} />
+      <Route path="/book/:slug" element={<RouteBoundary><CustomerBooking /></RouteBoundary>} />
+      <Route path="/b/:slug" element={<RouteBoundary><CustomerBooking /></RouteBoundary>} />
+      <Route path="/my-appointments" element={<RouteBoundary><CustomerAppointmentsPage /></RouteBoundary>} />
       <Route
         path="/dashboard/*"
         element={
-          <Protected>
-            <Dashboard
-              business={business}
-              setBusiness={setBusiness}
-              businessLoading={businessLoading}
-              businessError={businessError}
-              logout={logout}
-            />
-          </Protected>
+          <RouteBoundary>
+            <Protected>
+              <Dashboard
+                business={business}
+                setBusiness={setBusiness}
+                businessLoading={businessLoading}
+                businessError={businessError}
+                logout={logout}
+              />
+            </Protected>
+          </RouteBoundary>
         }
       />
-      <Route path="*" element={<NavigateHome user={auth.user} />} />
+      <Route path="*" element={<RouteBoundary><NavigateHome user={auth.user} /></RouteBoundary>} />
     </Routes>
+    </Suspense>
   );
 }
 function HomePage() {
@@ -342,7 +433,8 @@ const navItems = [
   ["/dashboard/services", "Υπηρεσίες", Scissors],
   ["/dashboard/staff", "Ομάδα", UserRound],
   ["/dashboard/profile", "Προφίλ επιχείρησης", Sparkles],
-  ["/dashboard/ai", "Εξυπηρέτηση Πελατών & AI", Sparkles],
+  ["/dashboard/ai", "Εξυπηρέτηση Πελατών", Sparkles],
+  ["/dashboard/plan", "Πλάνο", CreditCard],
   ["/dashboard/settings", "Ρυθμίσεις", Settings],
 ];
 function Dashboard({
@@ -364,6 +456,31 @@ function Dashboard({
   const hours = useData("working_hours", business?.id, {
     order: "day_of_week",
   });
+  const support = useData("customer_support_conversations", business?.id, {
+    select: "id,unread_for_business,updated_at",
+    order: "updated_at",
+  });
+  useEffect(() => {
+    if (!supabase || !business?.id) return undefined;
+    const channel = supabase
+      .channel(`support-badge-${business.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "customer_support_conversations",
+          filter: `business_id=eq.${business.id}`,
+        },
+        () => support.reload(),
+      )
+      .subscribe();
+    const refresh = window.setInterval(() => support.reload(), 30000);
+    return () => {
+      window.clearInterval(refresh);
+      supabase.removeChannel(channel);
+    };
+  }, [business?.id]);
   if (businessLoading) return <Loading />;
   if (businessError || !business)
     return (
@@ -418,6 +535,12 @@ function Dashboard({
               <Icon size={17} />
               <span>{label}</span>
               {label === "Ραντεβού" && <b>{appointments.data.length}</b>}
+              {label === "Εξυπηρέτηση Πελατών" &&
+                support.data.some((item) => item.unread_for_business) && (
+                  <b>
+                    {support.data.filter((item) => item.unread_for_business).length}
+                  </b>
+                )}
             </NavLink>
           ))}
         </nav>
@@ -486,17 +609,22 @@ function Dashboard({
             />
             <Route path="services" element={<Services business={business} />} />
             <Route path="staff" element={<Staff business={business} />} />
-            <Route path="ai" element={<AIAssistant business={business} />} />
             <Route
-              path="profile"
-              element={<CustomerBooking dashboardMode={true} business={business} />}
-            />
-            <Route
-              path="settings"
+              path="ai"
               element={
-                <Profile business={business} setBusiness={setBusiness} />
+                <AIAssistant
+                  business={business}
+                  appointments={appointments}
+                  hours={hours}
+                />
               }
             />
+            <Route
+              path="profile"
+              element={<Profile business={business} setBusiness={setBusiness} />}
+            />
+            <Route path="plan" element={<PlanPage business={business} />} />
+            <Route path="settings" element={<SettingsPage business={business} />} />
           </Routes>
         </div>
       </main>
@@ -528,6 +656,230 @@ function PageHeader({ eyebrow, title, subtitle, action }) {
     </div>
   );
 }
+
+function ProfessionalNotificationsBell({ business, user }) {
+  const [items, setItems] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [loading, setLoading] = useState(Boolean(business?.id && user?.id));
+  const [open, setOpen] = useState(false);
+  const [notificationError, setNotificationError] = useState("");
+  const [pushError, setPushError] = useState("");
+  const [pushMessage, setPushMessage] = useState("");
+  const [pushWorking, setPushWorking] = useState(false);
+  const promptAttempted = useRef(false);
+
+  const loadNotifications = async () => {
+    if (!supabase || !business?.id || !user?.id) {
+      setItems([]);
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setNotificationError("");
+      const [listResult, countResult] = await Promise.all([
+        supabase
+          .from("professional_notifications")
+          .select("id,title,body,category,event_type,read_at,created_at")
+          .eq("business_id", business.id)
+          .eq("recipient_user_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(10),
+        supabase
+          .from("professional_notifications")
+          .select("id", { count: "exact", head: true })
+          .eq("business_id", business.id)
+          .eq("recipient_user_id", user.id)
+          .is("read_at", null),
+      ]);
+      if (listResult.error) throw listResult.error;
+      if (countResult.error) throw countResult.error;
+      setItems(listResult.data || []);
+      setUnreadCount(countResult.count || 0);
+    } catch (requestError) {
+      reportCriticalError(requestError, {
+        feature: "professional-notifications",
+        operation: "load-notifications",
+      });
+      setNotificationError("Δεν ήταν δυνατή η φόρτωση των ειδοποιήσεων. Δοκιμάστε ξανά.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadNotifications();
+    if (!supabase || !business?.id || !user?.id) return undefined;
+
+    const channel = supabase
+      .channel(`professional-notifications-${business.id}-${user.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "professional_notifications",
+          filter: `recipient_user_id=eq.${user.id}`,
+        },
+        () => loadNotifications(),
+      )
+      .subscribe();
+
+    const refresh = window.setInterval(loadNotifications, 30000);
+    return () => {
+      window.clearInterval(refresh);
+      supabase.removeChannel(channel);
+    };
+  }, [business?.id, user?.id]);
+
+  const markAllAsRead = async () => {
+    if (!unreadCount || !supabase) return;
+
+    const readAt = new Date().toISOString();
+    const { error } = await supabase
+      .from("professional_notifications")
+      .update({ read_at: readAt })
+      .eq("business_id", business.id)
+      .eq("recipient_user_id", user.id)
+      .is("read_at", null);
+
+    if (error) {
+      reportCriticalError(error, {
+        feature: "professional-notifications",
+        operation: "mark-read",
+      });
+      setNotificationError("Δεν ήταν δυνατή η ενημέρωση των ειδοποιήσεων.");
+      return;
+    }
+
+    setItems((current) => current.map((item) => ({ ...item, read_at: item.read_at || readAt })));
+    setUnreadCount(0);
+  };
+
+  const registerPush = async () => {
+    setPushError("");
+    setPushMessage("");
+    if (!WEB_PUSH_VAPID_PUBLIC_KEY) {
+      setPushError("Οι ειδοποιήσεις push δεν είναι ρυθμισμένες ακόμη.");
+      return;
+    }
+    if (!supabase || !business?.id || !user?.id ||
+      !("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) {
+      setPushError("Οι ειδοποιήσεις push δεν υποστηρίζονται σε αυτή τη συσκευή ή περιήγηση.");
+      return;
+    }
+
+    setPushWorking(true);
+    try {
+      let permission = Notification.permission;
+      if (permission === "default") {
+        const promptKey = `bookeasy-push-prompted:${business.id}`;
+        let wasPrompted = promptAttempted.current;
+        try {
+          wasPrompted ||= localStorage.getItem(promptKey) === "true";
+        } catch {
+          // The component ref still prevents repeated prompts in this page session.
+        }
+        if (wasPrompted) {
+          setPushError("Η άδεια δεν θα ζητηθεί ξανά αυτόματα. Ελέγξτε τις ρυθμίσεις ειδοποιήσεων του browser.");
+          return;
+        }
+        promptAttempted.current = true;
+        try {
+          localStorage.setItem(promptKey, "true");
+        } catch {
+          // Permission is still requested only from this explicit button action.
+        }
+        permission = await Notification.requestPermission();
+      }
+      if (permission !== "granted") {
+        setPushError(permission === "denied"
+          ? "Οι ειδοποιήσεις έχουν αποκλειστεί στις ρυθμίσεις του browser."
+          : "Δεν δόθηκε άδεια για ειδοποιήσεις.");
+        return;
+      }
+
+      const registration = await navigator.serviceWorker.ready;
+      const subscription = await registration.pushManager.getSubscription() ||
+        await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: decodeVapidPublicKey(WEB_PUSH_VAPID_PUBLIC_KEY),
+        });
+      const serialized = subscription.toJSON();
+      const expirationTime = subscription.expirationTime;
+      const { error } = await supabase.rpc("save_professional_push_subscription", {
+        target_business: business.id,
+        target_endpoint: serialized.endpoint,
+        target_p256dh: serialized.keys?.p256dh,
+        target_auth: serialized.keys?.auth,
+        target_expiration: expirationTime ? new Date(expirationTime).toISOString() : null,
+      });
+      if (error) throw error;
+      setPushMessage("Οι ειδοποιήσεις push ενεργοποιήθηκαν.");
+    } catch (requestError) {
+      reportCriticalError(requestError, {
+        feature: "professional-notifications",
+        operation: "register-push-subscription",
+      });
+      setPushError("Δεν ήταν δυνατή η ενεργοποίηση των ειδοποιήσεων push. Το dashboard παραμένει διαθέσιμο.");
+    } finally {
+      setPushWorking(false);
+    }
+  };
+
+  return (
+    <div className="notification-bell-wrap">
+      <button
+        type="button"
+        className="icon-button notification-bell"
+        onClick={() => setOpen((current) => !current)}
+        aria-label="Ειδοποιήσεις επαγγελματία"
+        aria-expanded={open}
+      >
+        <Bell size={17} />
+        {unreadCount > 0 && (
+          <span className="notification-badge">
+            {unreadCount > 9 ? "9+" : unreadCount}
+          </span>
+        )}
+      </button>
+      {open && (
+        <div className="notification-popover" role="dialog" aria-label="Κέντρο ειδοποιήσεων">
+          <div className="notification-header">
+            <strong>Ειδοποιήσεις</strong>
+            {unreadCount > 0 && (
+              <button type="button" className="notification-action" onClick={markAllAsRead}>
+                Σήμανση ως αναγνωσμένες
+              </button>
+            )}
+          </div>
+          {notificationError && <div className="notification-error" role="alert">{notificationError}</div>}
+          {loading ? (
+            <div className="notification-empty">Φόρτωση...</div>
+          ) : notificationError ? null : items.length ? (
+            items.map((item) => (
+              <div key={item.id} className={`notification-item ${item.read_at ? "read" : "unread"}`}>
+                <strong>{item.title}</strong>
+                <p>{item.body}</p>
+                <small>{new Date(item.created_at).toLocaleString("el-GR")}</small>
+              </div>
+            ))
+          ) : (
+            <div className="notification-empty">Δεν υπάρχουν ειδοποιήσεις για αυτήν τη στιγμή.</div>
+          )}
+          <div className="notification-push-settings">
+            <button type="button" className="notification-action" onClick={registerPush} disabled={pushWorking}>
+              {pushWorking ? "Ενεργοποίηση..." : "Ενεργοποίηση push ειδοποιήσεων"}
+            </button>
+            {pushError && <p className="notification-error" role="alert">{pushError}</p>}
+            {pushMessage && <p className="notification-success" role="status">{pushMessage}</p>}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 function StatCard({ icon: Icon, label, value, trend, tone }) {
   return (
     <article className="stat-card">
@@ -543,6 +895,11 @@ function StatCard({ icon: Icon, label, value, trend, tone }) {
   );
 }
 function Overview({ appointments, business, hours }) {
+  const { user } = useAuth();
+  const professionalName =
+    user?.user_metadata?.full_name ||
+    user?.user_metadata?.first_name ||
+    business.name;
   const today = new Date().toISOString().slice(0, 10);
   const todayItems = appointments.data.filter(
     (appointment) => appointment.appointment_date === today,
@@ -584,12 +941,15 @@ function Overview({ appointments, business, hours }) {
     <>
       <PageHeader
         eyebrow="ΣΗΜΕΡΑ"
-        title="Καλημέρα"
+        title={`Καλημέρα, ${professionalName}`}
         subtitle={`Μια γρήγορη ματιά στο ${business.name} σήμερα.`}
         action={
-          <Link className="primary-button" to={`/b/${business.slug}`}>
-            <Plus size={17} /> Νέο ραντεβού
-          </Link>
+          <>
+            <ProfessionalNotificationsBell business={business} user={user} />
+            <Link className="primary-button" to={`/b/${business.slug}`}>
+              <Plus size={17} /> Νέο ραντεβού
+            </Link>
+          </>
         }
       />
       <div className="stats-grid">
@@ -688,11 +1048,6 @@ function Overview({ appointments, business, hours }) {
           </Link>
         </section>
       </div>
-      <ProfessionalAI
-        business={business}
-        appointments={appointments}
-        hours={hours}
-      />
       <section className="link-banner">
         <div className="link-art">
           <div>↗</div>
@@ -739,7 +1094,7 @@ function ProfessionalAI({ business, appointments, hours }) {
     setReply("");
 
     try {
-      const { data, error } = await supabase.functions.invoke(
+      const data = await invokeWithRetry(
         "ai-assistant",
         {
           body: {
@@ -747,13 +1102,11 @@ function ProfessionalAI({ business, appointments, hours }) {
             business_id: business?.id,
           },
         },
+        { feature: "professional-ai", operation: "answer-business-question", attempts: 1, timeoutMs: 28000 },
       );
-
-      if (error) throw error;
-
       setReply(data?.reply || "Δεν υπάρχει διαθέσιμη απάντηση.");
       setMessage("");
-    } catch (error) {
+    } catch {
       setReply("Υπήρξε πρόβλημα με τον AI βοηθό. Δοκιμάστε ξανά.");
     } finally {
       setLoading(false);
@@ -1058,6 +1411,16 @@ function Appointments({ appointments }) {
                     >
                       ○
                     </button>
+                    {!(["cancelled", "completed"].includes(item.status)) && (
+                      <button
+                        className="mini-action danger"
+                        onClick={() => update(item.id, "cancelled")}
+                        aria-label={item.status === "confirmed" ? "Ακύρωση ραντεβού" : "Απόρριψη ραντεβού"}
+                        title={item.status === "confirmed" ? "Ακύρωση ραντεβού" : "Απόρριψη ραντεβού"}
+                      >
+                        {item.status === "confirmed" ? "Ακύρωση" : "Απόρριψη"}
+                      </button>
+                    )}
                     <button
                       className="mini-action danger"
                       onClick={() => remove(item.id)}
@@ -1138,24 +1501,680 @@ function Editor({ title, value, fields, onClose, onSave }) {
     </div>
   );
 }
-function AIAssistant({ business }) {
+function AIAssistant({ business, appointments, hours }) {
+  const openSupportEmail = () => {
+    if (!BOOKEASY_SUPPORT_EMAIL) {
+      window.alert(
+        "Το BookEasy support email δεν έχει ρυθμιστεί ακόμη. Ορίστε το VITE_BOOKEASY_SUPPORT_EMAIL στο env της εφαρμογής.",
+      );
+      return;
+    }
+    window.location.href = `mailto:${BOOKEASY_SUPPORT_EMAIL}`;
+  };
+
   return (
     <div>
       <PageHeader
         eyebrow="BOOKEASY AI"
-        title="Εξυπηρέτηση Πελατών & AI"
-        subtitle="Διαχειρίσου τον AI βοηθό που εξυπηρετεί τους πελάτες της επιχείρησής σου."
+        title="Εξυπηρέτηση Πελατών"
+        subtitle="Διαχειριστείτε τα αιτήματα πελατών και ρωτήστε τον AI βοηθό της επιχείρησής σας."
       />
-      <div className="card" style={{ marginTop: 24 }}>
-        <h3>🤖 AI Βοηθός</h3>
-        <p style={{ marginTop: 8 }}>
-          Ο AI βοηθός μπορεί να απαντά στις ερωτήσεις των πελατών σου σχετικά με την επιχείρηση, τις υπηρεσίες και τα ραντεβού.
-        </p>
-        <div style={{ marginTop: 20 }}>
-          <strong>{business?.name}</strong>
-        </div>
+      <div className="professional-support-actions">
+        <button type="button" className="primary-button" onClick={openSupportEmail}>
+          <Mail size={16} /> Εκπρόσωπος
+        </button>
+        {BOOKEASY_SUPPORT_EMAIL ? (
+          <a className="support-email-link" href={`mailto:${BOOKEASY_SUPPORT_EMAIL}`}>
+            {BOOKEASY_SUPPORT_EMAIL}
+          </a>
+        ) : (
+          <small className="support-email-placeholder">
+            Το BookEasy support email δεν έχει ρυθμιστεί ακόμη. Ορίστε το VITE_BOOKEASY_SUPPORT_EMAIL.
+          </small>
+        )}
       </div>
+      <ProfessionalAI
+        business={business}
+        appointments={appointments}
+        hours={hours}
+      />
+      <CustomerSupportCenter business={business} />
     </div>
+  );
+}
+
+function SettingsPage({ business }) {
+  const { user } = useAuth();
+  return (
+    <div>
+      <PageHeader
+        eyebrow="ΛΟΓΑΡΙΑΣΜΟΣ & ΕΙΔΟΠΟΙΗΣΕΙΣ"
+        title="Ρυθμίσεις"
+        subtitle="Διαχειριστείτε τον λογαριασμό και τον τρόπο ενημέρωσης της επιχείρησής σας."
+      />
+      <section className="panel settings-panel">
+        <div>
+          <span className="eyebrow">ΛΟΓΑΡΙΑΣΜΟΣ</span>
+          <h2>Σύνδεση επαγγελματία</h2>
+          <p>{user?.email || "Δεν είναι διαθέσιμο email λογαριασμού."}</p>
+        </div>
+        <div>
+          <span className="eyebrow">ΑΙΤΗΜΑΤΑ ΠΕΛΑΤΩΝ</span>
+          <h2>Ειδοποιήσεις</h2>
+          <p>
+            Τα νέα αιτήματα εμφανίζονται στο inbox εξυπηρέτησης. Η αποστολή email
+            ειδοποιήσεων απαιτεί ρύθμιση παρόχου email στους server secrets του Supabase.
+          </p>
+          <Link className="outline-button" to="/dashboard/ai">
+            <Inbox size={16} /> Άνοιγμα inbox
+          </Link>
+        </div>
+        <div>
+          <span className="eyebrow">ΕΠΙΧΕΙΡΗΣΗ</span>
+          <h2>{business.name}</h2>
+          <p>Το επαγγελματικό email και η δημόσια ορατότητά του ρυθμίζονται στο προφίλ επιχείρησης.</p>
+          <Link className="outline-button" to="/dashboard/profile">
+            Ρυθμίσεις προφίλ
+          </Link>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function PlanPage({ business }) {
+  return (
+    <div>
+      <PageHeader
+        eyebrow="ΣΥΝΔΡΟΜΗ BOOKEASY"
+        title="Πλάνο"
+        subtitle="Δείτε το επαγγελματικό σας πακέτο και διαχειριστείτε τη συνδρομή σας."
+      />
+      <SubscriptionSettings business={business} />
+    </div>
+  );
+}
+
+function SubscriptionSettings({ business }) {
+  const location = useLocation();
+  const paymentReturn = new URLSearchParams(location.search).get("payment");
+  const [subscription, setSubscription] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [working, setWorking] = useState(false);
+  const [plan, setPlan] = useState("plus");
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const checkoutRequest = useRef(null);
+  const [hasStoredCheckoutRequest, setHasStoredCheckoutRequest] = useState(false);
+  const paidPeriodActive = Boolean(
+    subscription?.status === "active" &&
+    subscription.current_period_end &&
+    Date.parse(subscription.current_period_end) > Date.now(),
+  );
+  const activeRef = useRef(paidPeriodActive);
+  activeRef.current = paidPeriodActive;
+
+  const refreshSubscription = async () => {
+    if (!supabase) {
+      setError(SUPABASE_CONFIG_ERROR);
+      setLoading(false);
+      return null;
+    }
+    try {
+      const { data, error: requestError } = await supabase
+        .from("business_subscriptions")
+        .select("plan,status,current_period_start,current_period_end,cancel_at_period_end,checkout_expires_at")
+        .eq("business_id", business.id)
+        .maybeSingle();
+      if (requestError) throw requestError;
+      setSubscription(data);
+      setError("");
+      return data;
+    } catch (requestError) {
+      reportCriticalError(requestError, {
+        feature: "subscriptions",
+        operation: "load-subscription-state",
+      });
+      setError("Δεν ήταν δυνατή η φόρτωση της συνδρομής. Δοκιμάστε ξανά.");
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    refreshSubscription();
+  }, [business.id]);
+
+  useEffect(() => {
+    const refresh = window.setInterval(refreshSubscription, 30000);
+    return () => window.clearInterval(refresh);
+  }, [business.id]);
+
+  useEffect(() => {
+    if (subscription?.status === "checkout_pending") {
+      setPlan(subscription.plan);
+    }
+    const requestPlan = subscription?.status === "checkout_pending"
+      ? subscription.plan
+      : plan;
+    const key = `bookeasy-checkout-request:${business.id}:${requestPlan}`;
+    try {
+      setHasStoredCheckoutRequest(Boolean(sessionStorage.getItem(key)));
+    } catch {
+      setHasStoredCheckoutRequest(false);
+    }
+  }, [business.id, subscription?.status, subscription?.plan, subscription?.checkout_expires_at, plan]);
+
+  useEffect(() => {
+    if (paymentReturn !== "success" || activeRef.current) return undefined;
+    let attempts = 0;
+    let timer;
+    const poll = async () => {
+      await refreshSubscription();
+      attempts += 1;
+      if (attempts < 18 && !activeRef.current) {
+        timer = window.setTimeout(poll, 5000);
+      }
+    };
+    timer = window.setTimeout(poll, 1500);
+    return () => window.clearTimeout(timer);
+  }, [paymentReturn, business.id]);
+
+  const dateLabel = (date) => date
+    ? new Date(date).toLocaleDateString("el-GR", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      })
+    : "Δεν υπάρχει διαθέσιμη ημερομηνία";
+
+  const startCheckout = async () => {
+    if (working) return;
+    setWorking(true);
+    setError("");
+    setMessage("");
+    const storageKey = `bookeasy-checkout-request:${business.id}:${plan}`;
+    const checkoutExpired = subscription?.status === "incomplete_expired" ||
+      (subscription?.status === "checkout_pending" &&
+        subscription.checkout_expires_at &&
+        Date.parse(subscription.checkout_expires_at) <= Date.now());
+    if (checkoutExpired) {
+      try {
+        sessionStorage.removeItem(storageKey);
+      } catch {
+        // The request UUID is not an authorization credential.
+      }
+      checkoutRequest.current = null;
+    }
+    let requestId = null;
+    try {
+      requestId = sessionStorage.getItem(storageKey);
+    } catch {
+      // A per-page UUID still protects retries if storage is disabled.
+    }
+    requestId ||= checkoutRequest.current?.businessId === business.id && checkoutRequest.current?.plan === plan
+      ? checkoutRequest.current.id
+      : crypto.randomUUID();
+    checkoutRequest.current = { businessId: business.id, plan, id: requestId };
+    try {
+      sessionStorage.setItem(storageKey, requestId);
+    } catch {
+      // Checkout remains functional without browser storage.
+    }
+    try {
+      const result = await invokeWithRetry(
+        "create-checkout",
+        {
+          body: {
+            business_id: business.id,
+            plan,
+            checkout_request_id: requestId,
+          },
+        },
+        { feature: "subscriptions", operation: "create-checkout-session", attempts: 2, timeoutMs: 20000 },
+      );
+      if (!result?.url) throw new Error("Checkout URL missing");
+      window.location.assign(result.url);
+    } catch (requestError) {
+      reportCriticalError(requestError, {
+        feature: "subscriptions",
+        operation: "create-checkout-session",
+      });
+      setError("Δεν ήταν δυνατή η έναρξη της συνδρομής. Δοκιμάστε ξανά.");
+      setWorking(false);
+    }
+  };
+
+  const updateSubscription = async (action) => {
+    if (working) return;
+    setWorking(true);
+    setError("");
+    setMessage("");
+    try {
+      await invokeWithRetry(
+        "manage-subscription",
+        { body: { action, business_id: business.id } },
+        { feature: "subscriptions", operation: action, attempts: 2, timeoutMs: 20000 },
+      );
+      await refreshSubscription();
+      setMessage(action === "cancel"
+        ? "Η ακύρωση στο τέλος της περιόδου επιβεβαιώθηκε από το Stripe."
+        : "Η συνδρομή επαναφέρθηκε σύμφωνα με την ενημέρωση του Stripe.");
+    } catch (requestError) {
+      reportCriticalError(requestError, {
+        feature: "subscriptions",
+        operation: action,
+      });
+      setError("Δεν ήταν δυνατή η ενημέρωση της συνδρομής. Δοκιμάστε ξανά.");
+    } finally {
+      setWorking(false);
+    }
+  };
+
+  const statusLabels = {
+    active: "Ενεργή συνδρομή",
+    canceled: "Ανενεργή συνδρομή",
+    checkout_pending: "Ολοκλήρωση checkout σε εξέλιξη",
+    incomplete: "Η πληρωμή δεν ολοκληρώθηκε",
+    incomplete_expired: "Η προσπάθεια checkout έληξε",
+    past_due: "Η πληρωμή απέτυχε ή εκκρεμεί",
+    paused: "Η συνδρομή είναι σε παύση",
+    trialing: "Δοκιμαστική συνδρομή",
+    unpaid: "Η συνδρομή δεν έχει εξοφληθεί",
+  };
+  const pendingCheckoutActive = subscription?.status === "checkout_pending" &&
+    subscription.checkout_expires_at &&
+    Date.parse(subscription.checkout_expires_at) > Date.now();
+  const pendingCheckoutExpired = subscription?.status === "checkout_pending" &&
+    subscription.checkout_expires_at &&
+    Date.parse(subscription.checkout_expires_at) <= Date.now();
+  const canResumeCheckout = Boolean(pendingCheckoutActive && hasStoredCheckoutRequest);
+  const canStart = !subscription ||
+    (["canceled", "incomplete_expired"].includes(subscription.status) &&
+      (!subscription.current_period_end || Date.parse(subscription.current_period_end) <= Date.now())) ||
+    pendingCheckoutExpired ||
+    canResumeCheckout;
+  const canCancel = Boolean(
+    subscription &&
+    ["active", "past_due"].includes(subscription.status) &&
+    subscription.current_period_end &&
+    Date.parse(subscription.current_period_end) > Date.now() &&
+    !subscription.cancel_at_period_end,
+  );
+  const canResume = paidPeriodActive && subscription?.cancel_at_period_end;
+
+  return (
+    <section className="panel subscription-panel" aria-labelledby="subscription-title">
+      <div className="subscription-heading">
+        <div className="subscription-icon"><CreditCard size={20} /></div>
+        <div>
+          <span className="eyebrow">ΣΥΝΔΡΟΜΗ</span>
+          <h2 id="subscription-title">Επαγγελματικό πακέτο</h2>
+        </div>
+        <button className="icon-button" type="button" aria-label="Ανανέωση κατάστασης συνδρομής" onClick={refreshSubscription}>
+          <RefreshCw size={16} />
+        </button>
+      </div>
+
+      {paymentReturn === "success" && !paidPeriodActive && (
+        <Notice message="Η επιστροφή από το Checkout καταγράφηκε. Περιμένουμε επιβεβαίωση Stripe· η συνδρομή δεν ενεργοποιείται από τη σελίδα επιστροφής." />
+      )}
+      {paymentReturn === "success" && paidPeriodActive && (
+        <Notice message="Η ενεργή συνδρομή επιβεβαιώθηκε από το Stripe." success />
+      )}
+      {paymentReturn === "cancelled" && (
+        <Notice message="Η διαδικασία Checkout ακυρώθηκε. Δεν επιβεβαιώθηκε νέα συνδρομή." />
+      )}
+      {message && <Notice message={message} success />}
+      {error && <Notice message={error} />}
+
+      {loading ? (
+        <Loading />
+      ) : subscription ? (
+        <div className="subscription-state">
+          <div className="subscription-summary">
+            <span className="subscription-plan">{subscription.plan === "plus" ? "Plus" : "Basic"}</span>
+            <strong>
+              {subscription.status === "active" && !paidPeriodActive
+                ? "Η περίοδος συνδρομής έληξε"
+                : statusLabels[subscription.status] || "Κατάσταση συνδρομής: άγνωστη"}
+            </strong>
+          </div>
+          {subscription.current_period_end && (
+            <p>
+              {subscription.cancel_at_period_end && paidPeriodActive
+                ? `Η συνδρομή θα ακυρωθεί στις ${dateLabel(subscription.current_period_end)} και δεν θα γίνει νέα χρέωση.`
+                : paidPeriodActive
+                  ? `Η επόμενη χρέωση είναι στις ${dateLabel(subscription.current_period_end)}.`
+                  : subscription.status === "past_due" && Date.parse(subscription.current_period_end) > Date.now()
+                    ? `Η τρέχουσα περίοδος λήγει στις ${dateLabel(subscription.current_period_end)}. Η πληρωμή εκκρεμεί.`
+                    : `Η περίοδος συνδρομής έληξε στις ${dateLabel(subscription.current_period_end)}.`}
+            </p>
+          )}
+          {["past_due", "unpaid", "incomplete", "incomplete_expired"].includes(subscription.status) && (
+            <p className="subscription-inactive-note">Η premium πρόσβαση είναι ανενεργή μέχρι να επιβεβαιωθεί ενεργή συνδρομή από το Stripe. Δεν εφαρμόζεται περίοδος χάριτος.</p>
+          )}
+          <div className="subscription-actions">
+            {canCancel && (
+              <button className="outline-button" disabled={working} onClick={() => updateSubscription("cancel")}>
+                {working ? "Ενημέρωση..." : "Ακύρωση συνδρομής"}
+              </button>
+            )}
+            {canResume && (
+              <button className="primary-button" disabled={working} onClick={() => updateSubscription("resume")}>
+                {working ? "Ενημέρωση..." : "Επαναφορά συνδρομής"}
+              </button>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="subscription-state">
+          <p>Επιλέξτε επαγγελματικό πακέτο. Η ενεργοποίηση γίνεται μόνο μετά την επιβεβαίωση από υπογεγραμμένο συμβάν Stripe.</p>
+        </div>
+      )}
+
+      {canStart && !loading && (
+        <div className="subscription-start">
+          <label>
+            Πακέτο
+            <select value={plan} onChange={(event) => setPlan(event.target.value)} disabled={working || Boolean(pendingCheckoutActive)}>
+              <option value="basic">Basic</option>
+              <option value="plus">Plus</option>
+            </select>
+          </label>
+          <button className="primary-button" disabled={working} onClick={startCheckout}>
+            {working ? "Μετάβαση στο Checkout..." : canResumeCheckout ? "Συνέχεια στο Checkout" : "Συνέχεια στο Stripe Checkout"}
+          </button>
+        </div>
+      )}
+      <small className="subscription-footnote">Η ακύρωση ισχύει στο τέλος της πληρωμένης περιόδου. Δεν εκδίδεται αυτόματη επιστροφή χρημάτων.</small>
+    </section>
+  );
+}
+
+function CustomerSupportCenter({ business }) {
+  const { user } = useAuth();
+  const [conversations, setConversations] = useState([]);
+  const conversationsRef = useRef([]);
+  const [selected, setSelected] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [reply, setReply] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [loadingMessages, setLoadingMessages] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState("");
+  const replyRequestKey = useRef(null);
+
+  const loadConversations = async () => {
+    if (!supabase) return;
+    try {
+      const { data, error: requestError } = await supabase
+        .from("customer_support_conversations")
+        .select("id,customer_name,customer_email,customer_phone,status,channel,unread_for_business,last_message_at,created_at")
+        .eq("business_id", business.id)
+        .order("last_message_at", { ascending: false });
+      if (requestError) throw requestError;
+      const rows = data || [];
+      conversationsRef.current = rows;
+      setConversations(rows);
+      setSelected((current) => {
+        const updated = rows.find((item) => item.id === current?.id);
+        return updated || current;
+      });
+      setError("");
+    } catch (requestError) {
+      reportCriticalError(requestError, {
+        feature: "customer-support-inbox",
+        operation: "load-conversations",
+      });
+      setError("Δεν ήταν δυνατή η φόρτωση των αιτημάτων. Δοκιμάστε ξανά.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadConversations();
+    if (!supabase) return undefined;
+    const channel = supabase
+      .channel(`support-inbox-${business.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "customer_support_conversations",
+          filter: `business_id=eq.${business.id}`,
+        },
+        loadConversations,
+      )
+      .subscribe();
+    const refresh = window.setInterval(loadConversations, 20000);
+    return () => {
+      window.clearInterval(refresh);
+      supabase.removeChannel(channel);
+    };
+  }, [business.id]);
+
+  const loadMessages = async (conversationId) => {
+    if (!supabase) return;
+    setLoadingMessages(true);
+    try {
+      const { data, error: requestError } = await supabase
+        .from("customer_support_messages")
+        .select("id,sender_type,body,created_at")
+        .eq("conversation_id", conversationId)
+        .order("created_at");
+      if (requestError) throw requestError;
+      setMessages(data || []);
+      const current = conversationsRef.current.find((item) => item.id === conversationId);
+      if (current?.unread_for_business || current?.status === "new") {
+        const nextStatus = current.status === "new" ? "in_progress" : current.status;
+        const { error: updateError } = await supabase
+          .from("customer_support_conversations")
+          .update({
+            unread_for_business: false,
+            status: nextStatus,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", conversationId);
+        if (updateError) throw updateError;
+        conversationsRef.current = conversationsRef.current.map((item) =>
+          item.id === conversationId
+            ? { ...item, unread_for_business: false, status: nextStatus }
+            : item,
+        );
+        setSelected((item) => item?.id === conversationId
+          ? { ...item, unread_for_business: false, status: nextStatus }
+          : item);
+      }
+      await loadConversations();
+    } catch (requestError) {
+      reportCriticalError(requestError, {
+        feature: "customer-support-inbox",
+        operation: "load-messages",
+      });
+      setError("Δεν ήταν δυνατή η φόρτωση της συνομιλίας.");
+    } finally {
+      setLoadingMessages(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!selected?.id || !supabase) return undefined;
+    loadMessages(selected.id);
+    const refresh = window.setInterval(() => loadMessages(selected.id), 15000);
+    return () => window.clearInterval(refresh);
+  }, [selected?.id]);
+
+  const sendReply = async (event) => {
+    event.preventDefault();
+    const text = reply.trim();
+    if (!text || !selected || !user || sending) return;
+    setSending(true);
+    setError("");
+    const replyRequestKeyForMessage =
+      replyRequestKey.current?.conversationId === selected.id &&
+        replyRequestKey.current?.text === text
+        ? replyRequestKey.current.id
+        : crypto.randomUUID();
+    replyRequestKey.current = {
+      conversationId: selected.id,
+      text,
+      id: replyRequestKeyForMessage,
+    };
+    try {
+      const { error: insertError } = await supabase
+        .from("customer_support_messages")
+        .insert({
+          conversation_id: selected.id,
+          client_message_id: replyRequestKeyForMessage,
+          sender_type: "professional",
+          sender_user_id: user.id,
+          body: text,
+        });
+      if (insertError && insertError.code !== "23505") throw insertError;
+      const { error: updateError } = await supabase
+        .from("customer_support_conversations")
+        .update({
+          status: selected.status === "completed" ? "in_progress" : selected.status,
+          unread_for_customer: true,
+          last_message_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", selected.id);
+      if (updateError) throw updateError;
+      replyRequestKey.current = null;
+      setReply("");
+      await loadMessages(selected.id);
+    } catch (requestError) {
+      reportCriticalError(requestError, {
+        feature: "customer-support-inbox",
+        operation: "send-reply",
+      });
+      setError("Η απάντηση δεν στάλθηκε. Ελέγξτε τη σύνδεση και δοκιμάστε ξανά.");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const updateStatus = async (status) => {
+    if (!selected || !supabase) return;
+    const { error: updateError } = await supabase
+      .from("customer_support_conversations")
+      .update({ status, updated_at: new Date().toISOString() })
+      .eq("id", selected.id);
+    if (updateError) {
+      reportCriticalError(updateError, {
+        feature: "customer-support-inbox",
+        operation: "update-status",
+      });
+      setError("Η κατάσταση δεν αποθηκεύτηκε.");
+      return;
+    }
+    setSelected((current) => ({ ...current, status }));
+    await loadConversations();
+  };
+
+  return (
+    <section className="support-center" aria-label="Αιτήματα εξυπηρέτησης πελατών">
+      <div className="support-center-heading">
+        <div>
+          <span className="eyebrow">INBOX ΕΠΙΧΕΙΡΗΣΗΣ</span>
+          <h2>Αιτήματα πελατών</h2>
+        </div>
+        <button className="icon-button" onClick={loadConversations} aria-label="Ανανέωση αιτημάτων">
+          <RefreshCw size={17} />
+        </button>
+      </div>
+      {error && <Notice message={error} />}
+      <div className="support-center-grid">
+        <div className="support-conversation-list" aria-label="Συνομιλίες">
+          {loading ? (
+            <Loading />
+          ) : conversations.length ? conversations.map((item) => (
+            <button
+              type="button"
+              key={item.id}
+              className={`support-conversation ${selected?.id === item.id ? "selected" : ""}`}
+              onClick={() => {
+                setSelected(item);
+                setError("");
+              }}
+            >
+              <span className="support-conversation-icon"><MessageCircle size={17} /></span>
+              <span className="support-conversation-copy">
+                <strong>{item.customer_name}</strong>
+                <small>{item.customer_email || item.customer_phone || "Χωρίς στοιχεία επικοινωνίας"}</small>
+                <small>{new Date(item.last_message_at).toLocaleString("el-GR")}</small>
+              </span>
+              <span className={`support-status status-${item.status}`}>
+                {item.status === "new" ? "Νέο" : item.status === "in_progress" ? "Σε εξέλιξη" : "Ολοκληρώθηκε"}
+              </span>
+              {item.unread_for_business && <span className="support-unread" aria-label="Μη αναγνωσμένο" />}
+            </button>
+          )) : (
+            <div className="empty-state">Δεν υπάρχουν αιτήματα πελατών ακόμη.</div>
+          )}
+        </div>
+
+        <section className="support-conversation-detail" aria-label="Λεπτομέρειες αιτήματος">
+          {!selected ? (
+            <div className="empty-state support-select-prompt">
+              <Inbox size={26} />
+              <span>Επιλέξτε ένα αίτημα για να δείτε τη συνομιλία.</span>
+            </div>
+          ) : (
+            <>
+              <header className="support-detail-header">
+                <div>
+                  <h3>{selected.customer_name}</h3>
+                  <p>{[selected.customer_email, selected.customer_phone].filter(Boolean).join(" · ")}</p>
+                </div>
+                <select
+                  aria-label="Κατάσταση αιτήματος"
+                  value={selected.status}
+                  onChange={(event) => updateStatus(event.target.value)}
+                >
+                  <option value="new">Νέο</option>
+                  <option value="in_progress">Σε εξέλιξη</option>
+                  <option value="completed">Ολοκληρώθηκε</option>
+                </select>
+              </header>
+              <div className="support-message-list">
+                {loadingMessages ? <Loading /> : messages.map((item) => (
+                  <article
+                    className={`support-message support-message-${item.sender_type}`}
+                    key={item.id}
+                  >
+                    <div className="support-message-meta">
+                      <strong>{item.sender_type === "customer" ? "Πελάτης" : item.sender_type === "assistant" ? "AI BookEasy" : "Εσείς"}</strong>
+                      <time>{new Date(item.created_at).toLocaleString("el-GR")}</time>
+                    </div>
+                    <p>{item.body}</p>
+                  </article>
+                ))}
+              </div>
+              <form className="support-reply-form" onSubmit={sendReply}>
+                <textarea
+                  value={reply}
+                  onChange={(event) => setReply(event.target.value.slice(0, 4000))}
+                  maxLength={4000}
+                  rows={3}
+                  placeholder="Γράψτε την απάντησή σας..."
+                  disabled={sending || selected.status === "completed"}
+                  required
+                />
+                <button className="primary-button" disabled={sending || !reply.trim() || selected.status === "completed"}>
+                  <Send size={16} /> {sending ? "Αποστολή..." : "Απάντηση"}
+                </button>
+              </form>
+            </>
+          )}
+        </section>
+      </div>
+    </section>
   );
 }
 
@@ -1493,11 +2512,18 @@ function StaffHoursEditor({ business, staffMember, onClose }) {
 }
 
 function Profile({ business, setBusiness }) {
+  const { user } = useAuth();
   const [form, setForm] = useState(business);
+  const [contactSettings, setContactSettings] = useState({
+    professional_email: user?.email || "",
+    email_is_public: false,
+    time_zone: "Europe/Athens",
+  });
   const [message, setMessage] = useState("");
   const [hours, setHours] = useState([]);
   const [photos, setPhotos] = useState("");
   const [uploading, setUploading] = useState("");
+  const [saving, setSaving] = useState(false);
   const defaultHours = dayNames.map((name, day_of_week) => ({
     name,
     day_of_week,
@@ -1514,7 +2540,12 @@ function Profile({ business, setBusiness }) {
         .select("url")
         .eq("business_id", business.id)
         .order("sort_order"),
-    ]).then(([hourResult, mediaResult]) => {
+      supabase
+        .from("business_contact_settings")
+        .select("professional_email,email_is_public,time_zone")
+        .eq("business_id", business.id)
+        .maybeSingle(),
+    ]).then(([hourResult, mediaResult, contactResult]) => {
       if (hourResult.error) setMessage(errorText(hourResult.error));
       setHours(
         (hourResult.data?.length ? hourResult.data : defaultHours).map((item) => ({
@@ -1524,8 +2555,21 @@ function Profile({ business, setBusiness }) {
       );
       if (mediaResult.error) setMessage(errorText(mediaResult.error));
       setPhotos((mediaResult.data || []).map((item) => item.url).join(", "));
+      if (contactResult.error) setMessage("Δεν ήταν δυνατή η φόρτωση των στοιχείων επικοινωνίας.");
+      setContactSettings({
+        professional_email: contactResult.data?.professional_email || user?.email || "",
+        email_is_public: contactResult.data?.email_is_public || false,
+        time_zone: contactResult.data?.time_zone || "Europe/Athens",
+      });
+    }).catch((requestError) => {
+      reportCriticalError(requestError, {
+        feature: "business-profile",
+        operation: "load-profile-settings",
+      });
+      setHours(defaultHours);
+      setMessage("Δεν ήταν δυνατή η φόρτωση όλων των στοιχείων. Δοκιμάστε ξανά.");
     });
-  }, [business.id]);
+  }, [business.id, user?.email]);
   const uploadMedia = async (file, folder) => {
     if (!file) return null;
     const extension = file.name.includes(".")
@@ -1534,24 +2578,31 @@ function Profile({ business, setBusiness }) {
     const safeName = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${extension}`;
     const path = `${business.id}/${folder}/${safeName}`;
 
-    const { error } = await supabase.storage
-      .from("business-media")
-      .upload(path, file, {
-        cacheControl: "3600",
-        upsert: false,
-        contentType: file.type || undefined,
-      });
-
-    if (error) {
-      setMessage(errorText(error));
+    if (!file.type.startsWith("image/") || file.size > 8 * 1024 * 1024) {
+      setMessage("Επιλέξτε εικόνα μικρότερη από 8 MB.");
       return null;
     }
-
-    const { data } = supabase.storage
-      .from("business-media")
-      .getPublicUrl(path);
-
-    return data.publicUrl;
+    try {
+      const { error } = await supabase.storage
+        .from("business-media")
+        .upload(path, file, {
+          cacheControl: "3600",
+          upsert: false,
+          contentType: file.type || undefined,
+        });
+      if (error) throw error;
+      const { data } = supabase.storage
+        .from("business-media")
+        .getPublicUrl(path);
+      return data.publicUrl;
+    } catch (requestError) {
+      reportCriticalError(requestError, {
+        feature: "business-profile-media",
+        operation: "upload-image",
+      });
+      setMessage("Η εικόνα δεν ανέβηκε. Ελέγξτε τη σύνδεσή σας και δοκιμάστε ξανά.");
+      return null;
+    }
   };
 
   const handleLogoUpload = async (event) => {
@@ -1615,8 +2666,18 @@ function Profile({ business, setBusiness }) {
   };
 
   
-const save = async (event) => {
-    event.preventDefault();
+const performSave = async () => {
+    const professionalEmail = contactSettings.professional_email.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(professionalEmail)) {
+      setMessage("Συμπληρώστε ένα έγκυρο επαγγελματικό email.");
+      return;
+    }
+    try {
+      new Intl.DateTimeFormat("el-GR", { timeZone: contactSettings.time_zone });
+    } catch {
+      setMessage("Συμπληρώστε έγκυρη ζώνη ώρας, όπως Europe/Athens.");
+      return;
+    }
     const { error } = await supabase
       .from("businesses")
       .update({
@@ -1634,6 +2695,26 @@ const save = async (event) => {
       .eq("id", business.id);
     if (error) {
       setMessage(errorText(error));
+      return;
+    }
+    const { error: contactError } = await supabase
+      .from("business_contact_settings")
+      .upsert(
+        {
+          business_id: business.id,
+          professional_email: professionalEmail,
+          email_is_public: contactSettings.email_is_public,
+          time_zone: contactSettings.time_zone,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "business_id" },
+      );
+    if (contactError) {
+      reportCriticalError(contactError, {
+        feature: "business-profile",
+        operation: "save-contact-settings",
+      });
+      setMessage("Δεν ήταν δυνατή η αποθήκευση των στοιχείων επικοινωνίας.");
       return;
     }
     const { error: hoursError } = await supabase
@@ -1691,12 +2772,28 @@ const save = async (event) => {
     setMessage("Οι αλλαγές αποθηκεύτηκαν.");
     setTimeout(() => setMessage(""), 3000);
   };
+  const save = async (event) => {
+    event.preventDefault();
+    if (saving) return;
+    setSaving(true);
+    try {
+      await performSave();
+    } catch (requestError) {
+      reportCriticalError(requestError, {
+        feature: "business-profile",
+        operation: "save-profile-settings",
+      });
+      setMessage("Δεν ήταν δυνατή η αποθήκευση. Ελέγξτε τη σύνδεσή σας και δοκιμάστε ξανά.");
+    } finally {
+      setSaving(false);
+    }
+  };
   return (
     <>
       <PageHeader
         eyebrow="ΠΡΟΦΙΛ ΕΠΙΧΕΙΡΗΣΗΣ"
         title="Η επιχείρησή σας"
-        subtitle="Αυτές οι πληροφορίες εμφανίζονται στη δημόσια σελίδα σας."
+        subtitle="Τα στοιχεία της επιχείρησης εμφανίζονται δημόσια. Το επαγγελματικό email παραμένει ιδιωτικό εκτός αν επιλέξετε να το δημοσιοποιήσετε."
       />
       <section className="panel form-panel">
         <Notice message={message} success={message.includes("αποθηκεύτηκαν")} />
@@ -1750,6 +2847,39 @@ const save = async (event) => {
                 value={form.phone || ""}
                 onChange={(e) => setForm({ ...form, phone: e.target.value })}
               />
+            </label>
+            <label>
+              Επαγγελματικό email
+              <input
+                type="email"
+                autoComplete="email"
+                value={contactSettings.professional_email}
+                onChange={(e) =>
+                  setContactSettings({ ...contactSettings, professional_email: e.target.value })
+                }
+                required
+              />
+            </label>
+            <label>
+              Ζώνη ώρας επιχείρησης
+              <input
+                value={contactSettings.time_zone}
+                onChange={(e) =>
+                  setContactSettings({ ...contactSettings, time_zone: e.target.value })
+                }
+                placeholder="Europe/Athens"
+                required
+              />
+            </label>
+            <label className="check-label wide">
+              <input
+                type="checkbox"
+                checked={contactSettings.email_is_public}
+                onChange={(e) =>
+                  setContactSettings({ ...contactSettings, email_is_public: e.target.checked })
+                }
+              />
+              Εμφάνιση του email στη δημόσια εξυπηρέτηση πελατών
             </label>
             <label>
               Διεύθυνση
@@ -1875,7 +3005,9 @@ const save = async (event) => {
             ))}
           </div>
           <div className="form-actions">
-            <button className="primary-button">Αποθήκευση αλλαγών</button>
+            <button className="primary-button" disabled={saving || Boolean(uploading)}>
+              {saving ? "Αποθήκευση..." : "Αποθήκευση αλλαγών"}
+            </button>
           </div>
         </form>
       </section>
@@ -1948,60 +3080,72 @@ function AuthPage({ mode, customer = false }) {
   });
   const submit = async (event) => {
     event.preventDefault();
+    if (loading) return;
     setLoading(true);
     setError("");
-    if (!supabase) {
-      setError(SUPABASE_CONFIG_ERROR);
-      setLoading(false);
-      return;
-    }
-    const result =
-      mode === "login"
-        ? await supabase.auth.signInWithPassword({
-            email: form.email,
-            password: form.password,
-          })
-        : await supabase.auth.signUp({
-            email: form.email,
-            password: form.password,
-            options: { data: { business_name: form.businessName } },
-          });
-    if (result.error) setError(errorText(result.error));
-    else if (mode === "register" && result.data.user && !customer) {
-      if (!result.data.session) {
-        setError(
-          "Ελέγξτε το email σας για επιβεβαίωση και μετά συνδεθείτε για να δημιουργήσετε τον χώρο σας.",
-        );
-        setLoading(false);
+    try {
+      if (!supabase) {
+        setError(SUPABASE_CONFIG_ERROR);
         return;
       }
-      const baseSlug = slugify(form.businessName);
-      let slug = baseSlug;
-      let suffix = 2;
-      while (true) {
-        const { data: existing } = await supabase
-          .from("businesses")
-          .select("id")
-          .eq("slug", slug)
-          .maybeSingle();
-        if (!existing) break;
-        slug = `${baseSlug}-${suffix}`;
-        suffix += 1;
+      const result =
+        mode === "login"
+          ? await supabase.auth.signInWithPassword({
+              email: form.email,
+              password: form.password,
+            })
+          : await supabase.auth.signUp({
+              email: form.email,
+              password: form.password,
+              options: { data: { business_name: form.businessName } },
+            });
+      if (result.error) {
+        setError(errorText(result.error));
+        return;
       }
-      const { error: businessError } = await supabase
-        .from("businesses")
-        .insert({
-          owner_id: result.data.user.id,
-          name: form.businessName,
-          slug,
-          description: "",
-          address: "",
-          phone: "",
-        });
-      if (businessError) setError(errorText(businessError));
-      else navigate("/dashboard");
-    } else navigate(customer ? "/customer" : "/dashboard");
-    setLoading(false);
+      if (mode === "register" && result.data.user && !customer) {
+        if (!result.data.session) {
+          setError(
+            "Ελέγξτε το email σας για επιβεβαίωση και μετά συνδεθείτε για να δημιουργήσετε τον χώρο σας.",
+          );
+          return;
+        }
+        const baseSlug = slugify(form.businessName);
+        let slug = baseSlug;
+        let suffix = 2;
+        while (true) {
+          const { data: existing, error: lookupError } = await supabase
+            .from("businesses")
+            .select("id")
+            .eq("slug", slug)
+            .maybeSingle();
+          if (lookupError) throw lookupError;
+          if (!existing) break;
+          slug = `${baseSlug}-${suffix}`;
+          suffix += 1;
+        }
+        const { error: businessError } = await supabase
+          .from("businesses")
+          .insert({
+            owner_id: result.data.user.id,
+            name: form.businessName,
+            slug,
+            description: "",
+            address: "",
+            phone: "",
+          });
+        if (businessError) throw businessError;
+      }
+      navigate(customer ? "/customer" : "/dashboard");
+    } catch (requestError) {
+      reportCriticalError(requestError, {
+        feature: "professional-authentication",
+        operation: mode,
+      });
+      setError("Δεν ήταν δυνατή η ολοκλήρωση της σύνδεσης. Δοκιμάστε ξανά.");
+    } finally {
+      setLoading(false);
+    }
   };
   const authPath = customer ? "/customer-" : "/";
   return (

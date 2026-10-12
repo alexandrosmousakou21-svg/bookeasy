@@ -5,11 +5,43 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
+
+async function requestOpenAI(openAiKey: string, body: Record<string, unknown>) {
+  let lastResponse: Response | null = null;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      const response = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        signal: AbortSignal.timeout(12000),
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${openAiKey}`,
+        },
+        body: JSON.stringify(body),
+      });
+      if (response.ok || (response.status < 500 && response.status !== 429)) {
+        return response;
+      }
+      lastResponse = response;
+    } catch {
+      if (attempt === 1) throw new Error("AI provider unavailable");
+    }
+    if (attempt === 0) await new Promise((resolve) => setTimeout(resolve, 400));
+  }
+  return lastResponse;
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
+  }
+  if (req.method !== "POST") {
+    return new Response(JSON.stringify({ error: "Μη υποστηριζόμενο αίτημα." }), {
+      status: 405,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 
   try {
@@ -64,9 +96,10 @@ Deno.serve(async (req) => {
       );
     }
 
-    const { message, business_id } = await req.json();
+    const body = await req.json();
+    const { message, business_id } = body;
 
-    if (!message?.trim()) {
+    if (typeof message !== "string" || !message.trim() || message.length > 1500) {
       return new Response(
         JSON.stringify({ error: "Το μήνυμα είναι κενό." }),
         {
@@ -254,15 +287,7 @@ ${
 }
 `;
 
-    const response = await fetch(
-      "https://api.openai.com/v1/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${openAiKey}`,
-        },
-        body: JSON.stringify({
+    const response = await requestOpenAI(openAiKey, {
           model: "gpt-4o-mini",
           messages: [
             {
@@ -302,17 +327,17 @@ ${businessContext}
             },
           ],
           max_tokens: 500,
-        }),
-      },
-    );
+        });
 
     if (!response.ok) {
-      const errorText = await response.text();
-
+      console.error(JSON.stringify({
+        feature: "professional-ai",
+        code: `openai_${response.status}`,
+        timestamp: new Date().toISOString(),
+      }));
       return new Response(
         JSON.stringify({
-          error: "Σφάλμα AI",
-          details: errorText,
+          error: "Ο AI βοηθός δεν είναι προσωρινά διαθέσιμος. Δοκιμάστε ξανά.",
         }),
         {
           status: 500,
@@ -337,12 +362,14 @@ ${businessContext}
       },
     );
   } catch (error) {
+    console.error(JSON.stringify({
+      feature: "professional-ai",
+      code: error instanceof Error ? error.name : "unknown_error",
+      timestamp: new Date().toISOString(),
+    }));
     return new Response(
       JSON.stringify({
-        error:
-          error instanceof Error
-            ? error.message
-            : "Άγνωστο σφάλμα",
+        error: "Ο AI βοηθός δεν μπόρεσε να απαντήσει αυτή τη στιγμή. Δοκιμάστε ξανά.",
       }),
       {
         status: 500,

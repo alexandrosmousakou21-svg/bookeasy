@@ -380,3 +380,1724 @@ textarea:focus {
     max-width: 90%;
   }
 }
+
+.ai-chat-button {
+  right: max(14px, env(safe-area-inset-right));
+  bottom: calc(14px + env(safe-area-inset-bottom));
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  z-index: 9998;
+}
+
+.ai-chat-window {
+  right: max(12px, env(safe-area-inset-right));
+  bottom: calc(82px + env(safe-area-inset-bottom));
+  width: min(390px, calc(100vw - 24px));
+  height: min(620px, calc(100dvh - 120px - env(safe-area-inset-top)));
+  border: 1px solid #E4D5C7;
+  border-radius: 12px;
+}
+
+.ai-chat-header {
+  min-height: 54px;
+  background: #5A4638;
+  color: #FBF7F1;
+}
+
+.support-mode-switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  padding: 8px;
+  border-bottom: 1px solid #E4D5C7;
+  background: #FFFFFF;
+}
+
+.support-mode-switch button {
+  min-width: 0;
+  min-height: 46px;
+  padding: 6px 8px;
+  background: #FBF7F1;
+  color: #5A4638;
+  border-color: #E4D5C7;
+  font-size: 11px;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.support-mode-switch button[aria-pressed="true"] {
+  background: #C9A98F;
+  border-color: #C9A98F;
+  color: #3E3027;
+  font-weight: 700;
+}
+
+.ai-chat-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  overscroll-behavior: contain;
+}
+
+.ai-chat-message {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  max-width: 88%;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.ai-chat-user {
+  align-self: flex-end;
+  background: #EFE2D7;
+  color: #5A4638;
+}
+
+.support-handoff-link {
+  min-height: 36px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #7C4D36;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: left;
+  text-decoration: underline;
+}
+
+.support-chat-notice,
+.support-chat-error,
+.support-chat-status {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.support-chat-notice,
+.support-chat-status {
+  background: #F0E7DF;
+  color: #5A4638;
+}
+
+.support-chat-error {
+  background: #FFF0EC;
+  color: #8A2E1D;
+}
+
+.ai-chat-compose {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border-top: 1px solid #E4D5C7;
+  background: #FFFFFF;
+}
+
+.support-contact-fields {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 7px;
+}
+
+.support-contact-fields input {
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
+  padding: 8px 10px;
+  font-size: 12px;
+}
+
+.ai-chat-compose .ai-chat-input {
+  align-items: center;
+  padding: 0;
+  border: 0;
+}
+
+.ai-chat-compose .ai-chat-input input {
+  min-height: 46px;
+  padding: 8px 10px;
+  font-size: 13px;
+}
+
+.ai-chat-compose .ai-chat-input button {
+  display: grid;
+  place-items: center;
+  flex: 0 0 46px;
+  width: 46px;
+  height: 46px;
+  background: #C9A98F;
+  color: #3E3027;
+}
+
+.ai-chat-compose .ai-chat-input button:disabled {
+  opacity: .55;
+  cursor: not-allowed;
+}
+
+@media (max-width: 600px) {
+  .ai-chat-window {
+    inset-inline: max(8px, env(safe-area-inset-left));
+    right: max(8px, env(safe-area-inset-right));
+    bottom: calc(8px + env(safe-area-inset-bottom));
+    width: auto;
+    height: min(720px, calc(100dvh - 16px - env(safe-area-inset-top) - env(safe-area-inset-bottom)));
+  }
+
+  .ai-chat-body {
+    min-height: 100px;
+  }
+}
+
+/* BOOKEASY — UNIFIED SLATE BLUE THEME */
+:root {
+  --navy: #26323F;
+  --blue: #8794A9;
+  --blue-dark: #26323F;
+  --teal: #26394E;
+  --ink: #E1E6EF;
+  --muted: #8794A9;
+  --line: #8794A9;
+  --surface: #26394E;
+  --green: #8794A9;
+  --orange: #8794A9;
+  --violet: #8794A9;
+  --gold: #8794A9;
+  --cream: #26323F;
+}
+
+html,
+body,
+#root,
+.app-shell,
+.main-content,
+.content,
+.customer-page,
+.public-page,
+.auth-layout,
+.auth-form-wrap {
+  background-color: #26323F;
+  color: #E1E6EF;
+}
+
+.sidebar,
+.topbar,
+.public-header,
+.panel,
+.stat-card,
+.customer-card,
+.service-card,
+.staff-card,
+.business-card,
+.booking-card,
+.modal,
+.settings-list,
+.table-panel,
+.customer-appointment,
+.customer-profile-panel,
+.empty-state {
+  background-color: #26394E;
+  color: #E1E6EF;
+  border-color: #8794A9;
+}
+
+.sidebar,
+.topbar,
+.public-header {
+  background-color: #26323F;
+}
+
+.workspace-switcher,
+.search-box,
+.booking-url,
+.form-grid input,
+.form-grid textarea,
+.booking-card input,
+.booking-card select,
+.auth-form input,
+.customer-search,
+.customer-profile-form input,
+.customer-details input,
+.modal input,
+.modal textarea,
+.hours-editor input {
+  background-color: #26394E;
+  color: #E1E6EF;
+  border-color: #8794A9;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #8794A9;
+  opacity: 1;
+}
+
+h1, h2, h3, h4, h5, h6,
+.page-header p,
+.panel-heading p,
+.breadcrumbs,
+.breadcrumbs strong,
+.nav-item,
+.nav-caption,
+.eyebrow,
+.muted,
+.stat-card span,
+.stat-card small,
+.appointment-info strong,
+.appointment-info span,
+.hours-list span,
+.hours-list strong,
+.customer-card strong,
+.customer-card span,
+.customer-card small,
+.service-card strong,
+.service-card span,
+.staff-card strong,
+.staff-card span,
+.form-grid label,
+.booking-card label,
+.auth-form label,
+.customer-appointment strong,
+.customer-appointment span,
+.customer-appointment small,
+.subscription-footnote {
+  color: #E1E6EF;
+}
+
+.sidebar .nav-item,
+.sidebar .nav-caption,
+.sidebar .workspace-switcher,
+.sidebar .user-row,
+.sidebar .workspace-switcher small,
+.sidebar .user-row small {
+  color: #E1E6EF !important;
+}
+
+.nav-item.active,
+.nav-item:hover,
+.customer-nav a:hover,
+.slot-grid button.selected,
+.slot-grid button:hover,
+.today-column {
+  background-color: #26394E;
+  color: #FFFFFF;
+}
+
+.primary-button,
+.primary-button.compact,
+.primary-button.full,
+.public-booking-cta,
+.customer-profile-form button,
+.ai-chat-compose .ai-chat-input button {
+  background-color: #8794A9;
+  color: #26323F;
+  border-color: #8794A9;
+  box-shadow: none;
+}
+
+.primary-button:hover,
+.primary-button.compact:hover,
+.primary-button.full:hover,
+.customer-profile-form button:hover,
+.ai-chat-compose .ai-chat-input button:hover {
+  background-color: #E1E6EF;
+  color: #26323F;
+  border-color: #E1E6EF;
+}
+
+.outline-button,
+.mini-action {
+  background-color: #26394E;
+  color: #E1E6EF;
+  border-color: #8794A9;
+}
+
+.outline-button:hover,
+.mini-action:hover {
+  background-color: #26323F;
+  color: #FFFFFF;
+  border-color: #E1E6EF;
+}
+
+.brand,
+.brand.light,
+.brand-mark,
+.avatar,
+.workspace-logo,
+.business-logo,
+.business-card-logo,
+.business-hero-logo,
+.date-tile,
+.stat-icon,
+.service-swatch {
+  border-color: #8794A9;
+}
+
+.brand-mark,
+.workspace-logo,
+.business-logo,
+.business-card-logo,
+.business-hero-logo,
+.avatar.navy,
+.avatar.blue,
+.avatar.pink,
+.avatar.green,
+.avatar.orange,
+.date-tile,
+.stat-icon.blue,
+.stat-icon.green,
+.stat-icon.orange,
+.stat-icon.violet,
+.service-swatch.blue,
+.service-swatch.orange,
+.service-swatch.green,
+.service-swatch.violet {
+  background-color: #26394E;
+  color: #E1E6EF;
+}
+
+.available-banner,
+.link-banner,
+.customer-hero,
+.auth-aside,
+.home-hero {
+  background: #26394E;
+  color: #E1E6EF;
+  border-color: #8794A9;
+}
+
+.auth-aside h1,
+.auth-aside h1 em,
+.auth-aside p,
+.auth-aside small,
+.home-hero h1,
+.home-hero p,
+.home-hero small {
+  color: #E1E6EF;
+}
+
+.status,
+.notice,
+.notice.success,
+.notice.error,
+.success-icon,
+.check-circle {
+  background-color: #26394E;
+  color: #E1E6EF;
+  border-color: #8794A9;
+}
+
+table th,
+table td {
+  background-color: #26394E;
+  color: #E1E6EF;
+  border-color: #8794A9;
+}
+
+.calendar-body {
+  background-color: #26323F;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 59px,
+    #8794A9 60px
+  );
+}
+
+.calendar-event {
+  background-color: #26394E;
+  color: #E1E6EF;
+  border-left-color: #8794A9;
+}
+
+.calendar-event small,
+.booking-facts,
+.business-facts {
+  color: #E1E6EF;
+}
+
+input:focus,
+select:focus,
+textarea:focus,
+.form-grid input:focus,
+.form-grid textarea:focus,
+.booking-card input:focus,
+.booking-card select:focus,
+.auth-form input:focus {
+  border-color: #E1E6EF;
+  box-shadow: 0 0 0 2px #8794A9;
+  outline: none;
+}
+
+a,
+.text-link,
+.public-login,
+.customer-nav,
+.customer-logout {
+  color: #E1E6EF;
+}
+
+button:disabled {
+  opacity: 0.55;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* END BOOKEASY SLATE BLUE THEME */
+
+/* BookEasy — unified beige and light brown authentication theme */
+.auth-layout {
+  background: #F6EFE6 !important;
+  color: #5A4638;
+}
+
+.auth-aside {
+  background: #E4D5C7 !important;
+  color: #5A4638 !important;
+}
+
+.auth-aside .brand.light {
+  color: #5A4638 !important;
+}
+
+.auth-aside .brand.light .brand-mark {
+  background: #C9A98F !important;
+  color: #FFFFFF !important;
+}
+
+.auth-aside .brand.light > span:last-child > span {
+  color: #B99175 !important;
+}
+
+.auth-aside .eyebrow,
+.auth-aside h1,
+.auth-aside p,
+.auth-aside small {
+  color: #5A4638 !important;
+}
+
+.auth-aside h1 em {
+  color: #B99175 !important;
+}
+
+.auth-form-wrap {
+  background: #F6EFE6 !important;
+  color: #5A4638 !important;
+}
+
+.auth-form {
+  background: #FBF7F1;
+  border: 1px solid #E4D5C7;
+  border-radius: 16px;
+  padding: 32px;
+  box-shadow: 0 12px 35px rgba(90, 70, 56, 0.08);
+}
+
+.auth-form .eyebrow,
+.auth-form h2,
+.auth-form label {
+  color: #5A4638 !important;
+}
+
+.auth-form > p {
+  color: #806B5B !important;
+}
+
+.auth-form input {
+  background: #FFFFFF !important;
+  color: #5A4638 !important;
+  border-color: #E4D5C7 !important;
+  border-radius: 9px;
+}
+
+.auth-form input:focus {
+  border-color: #C9A98F !important;
+  box-shadow: 0 0 0 3px #DCC8B5 !important;
+}
+
+.auth-form .primary-button,
+.auth-form button[type="submit"] {
+  background: #C9A98F;
+  border-color: #C9A98F;
+  color: #FFFFFF;
+}
+
+.auth-form .primary-button:hover,
+.auth-form button[type="submit"]:hover {
+  background: #B99175;
+  border-color: #B99175;
+}
+
+.auth-switch a {
+  color: #8A644C !important;
+}
+
+@media (max-width: 800px) {
+  .auth-form {
+    padding: 24px 20px;
+    box-shadow: none;
+  }
+}
+
+/* BOOKEASY - FINAL COLOR PALETTE */
+:root {
+  --navy: #26323F;
+  --blue: #26394E;
+  --blue-dark: #26323F;
+  --teal: #8797A7;
+  --ink: #26323F;
+  --muted: #26323F;
+  --line: #8797A7;
+  --surface: #FFFFFF;
+  --green: #8797A7;
+  --orange: #8797A7;
+  --violet: #8797A7;
+  --gold: #8797A7;
+  --cream: #E1E6EF;
+  color-scheme: light;
+}
+
+html,
+body,
+#root,
+.app-shell,
+.main-content,
+.content,
+.customer-page,
+.public-page,
+.auth-layout,
+.auth-form-wrap {
+  background: #E1E6EF !important;
+  color: #26323F !important;
+}
+
+.sidebar,
+.auth-aside {
+  background: #26323F !important;
+  color: #FFFFFF !important;
+}
+
+.sidebar *,
+.auth-aside *,
+.sidebar .nav-item,
+.sidebar .nav-caption {
+  color: #FFFFFF !important;
+}
+
+.topbar,
+.public-header,
+.panel,
+.stat-card,
+.customer-card,
+.service-card,
+.staff-card,
+.business-card,
+.booking-card,
+.modal,
+.settings-list,
+.table-panel,
+.customer-appointment,
+.customer-profile-panel,
+.auth-form,
+.form-panel,
+.empty-state,
+.customer-search,
+.search-box,
+.booking-url {
+  background: #FFFFFF !important;
+  color: #26323F !important;
+  border-color: #8797A7 !important;
+}
+
+h1, h2, h3, h4, h5, h6,
+p, span, small, strong, b, label,
+th, td, li, time, .muted,
+.page-header p,
+.panel-heading p {
+  color: #26323F;
+}
+
+a,
+.text-link,
+.public-login,
+.auth-switch a {
+  color: #26394E !important;
+}
+
+.primary-button,
+.primary-button.compact,
+.primary-button.full,
+.public-booking-cta,
+.customer-profile-form button,
+.auth-form button[type="submit"],
+.ai-chat-compose .ai-chat-input button {
+  background: #26394E !important;
+  color: #FFFFFF !important;
+  border-color: #26394E !important;
+}
+
+.primary-button:hover,
+.public-booking-cta:hover,
+.auth-form button[type="submit"]:hover {
+  background: #26323F !important;
+  color: #FFFFFF !important;
+}
+
+input,
+select,
+textarea,
+.form-grid input,
+.form-grid textarea,
+.booking-card input,
+.booking-card select,
+.auth-form input,
+.customer-profile-form input,
+.customer-details input,
+.modal input,
+.modal textarea {
+  background: #FFFFFF !important;
+  color: #26323F !important;
+  border-color: #8797A7 !important;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #26323F !important;
+  opacity: 0.7;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: #26394E !important;
+  box-shadow: 0 0 0 2px #8797A7 !important;
+}
+
+.nav-item.active,
+.nav-item:hover,
+.sidebar .nav-item.active,
+.sidebar .nav-item:hover {
+  background: #26394E !important;
+  color: #FFFFFF !important;
+}
+
+.avatar,
+.stat-icon,
+.service-swatch,
+.workspace-logo,
+.business-card-logo,
+.business-hero-logo,
+.business-logo,
+.date-tile {
+  background: #E1E6EF !important;
+  color: #26323F !important;
+  border-color: #8797A7 !important;
+}
+
+.status,
+.notice,
+.available-banner,
+.empty-state,
+.slot-grid button.selected,
+.slot-grid button:hover {
+  background: #E1E6EF !important;
+  color: #26323F !important;
+  border-color: #8797A7 !important;
+}
+
+/* BOOKEASY - FINAL COLOR PALETTE */
+:root {
+  --navy: #26323F;
+  --blue: #26394E;
+  --blue-dark: #26323F;
+  --teal: #8797A7;
+  --ink: #26323F;
+  --muted: #26323F;
+  --line: #8797A7;
+  --surface: #FFFFFF;
+  --green: #8797A7;
+  --orange: #8797A7;
+  --violet: #8797A7;
+  --gold: #8797A7;
+  --cream: #E1E6EF;
+  color-scheme: light;
+}
+
+html,
+body,
+#root,
+.app-shell,
+.main-content,
+.content,
+.customer-page,
+.public-page,
+.auth-layout,
+.auth-form-wrap {
+  background: #E1E6EF !important;
+  color: #26323F !important;
+}
+
+.sidebar,
+.auth-aside {
+  background: #26323F !important;
+  color: #FFFFFF !important;
+}
+
+.sidebar *,
+.auth-aside *,
+.sidebar .nav-item,
+.sidebar .nav-caption {
+  color: #FFFFFF !important;
+}
+
+.topbar,
+.public-header,
+.panel,
+.stat-card,
+.customer-card,
+.service-card,
+.staff-card,
+.business-card,
+.booking-card,
+.modal,
+.settings-list,
+.table-panel,
+.customer-appointment,
+.customer-profile-panel,
+.auth-form,
+.form-panel,
+.empty-state,
+.customer-search,
+.search-box,
+.booking-url {
+  background: #FFFFFF !important;
+  color: #26323F !important;
+  border-color: #8797A7 !important;
+}
+
+h1, h2, h3, h4, h5, h6,
+p, span, small, strong, b, label,
+th, td, li, time, .muted,
+.page-header p,
+.panel-heading p {
+  color: #26323F;
+}
+
+a,
+.text-link,
+.public-login,
+.auth-switch a {
+  color: #26394E !important;
+}
+
+.primary-button,
+.primary-button.compact,
+.primary-button.full,
+.public-booking-cta,
+.customer-profile-form button,
+.auth-form button[type="submit"],
+.ai-chat-compose .ai-chat-input button {
+  background: #26394E !important;
+  color: #FFFFFF !important;
+  border-color: #26394E !important;
+}
+
+.primary-button:hover,
+.public-booking-cta:hover,
+.auth-form button[type="submit"]:hover {
+  background: #26323F !important;
+  color: #FFFFFF !important;
+}
+
+input,
+select,
+textarea,
+.form-grid input,
+.form-grid textarea,
+.booking-card input,
+.booking-card select,
+.auth-form input,
+.customer-profile-form input,
+.customer-details input,
+.modal input,
+.modal textarea {
+  background: #FFFFFF !important;
+  color: #26323F !important;
+  border-color: #8797A7 !important;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #26323F !important;
+  opacity: 0.7;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: #26394E !important;
+  box-shadow: 0 0 0 2px #8797A7 !important;
+}
+
+.nav-item.active,
+.nav-item:hover,
+.sidebar .nav-item.active,
+.sidebar .nav-item:hover {
+  background: #26394E !important;
+  color: #FFFFFF !important;
+}
+
+.avatar,
+.stat-icon,
+.service-swatch,
+.workspace-logo,
+.business-card-logo,
+.business-hero-logo,
+.business-logo,
+.date-tile {
+  background: #E1E6EF !important;
+  color: #26323F !important;
+  border-color: #8797A7 !important;
+}
+
+.status,
+.notice,
+.available-banner,
+.empty-state,
+.slot-grid button.selected,
+.slot-grid button:hover {
+  background: #E1E6EF !important;
+  color: #26323F !important;
+  border-color: #8797A7 !important;
+}
+
+/* BOOKEASY - 3D ELECTRONIC THEME */
+:root {
+  --navy: #26394E;
+  --blue: #8797A7;
+  --blue-dark: #26394E;
+  --teal: #8797A7;
+  --ink: #FFFFFF;
+  --muted: #E1E6EF;
+  --line: #8797A7;
+  --surface: #26394E;
+  --cream: #26394E;
+  color-scheme: dark;
+}
+
+html, body, #root {
+  background: #26394E !important;
+  color: #FFFFFF;
+}
+
+body, .app-shell, .main-content, .customer-page,
+.customer-home, .customer-directory, .public-page,
+.auth-layout, .home-hero, .customer-hero {
+  background: #26394E !important;
+  color: #FFFFFF !important;
+}
+
+.sidebar, .topbar, .public-header, .ai-chat-window,
+.ai-chat-body, .ai-chat-compose {
+  background: #26394E !important;
+  color: #FFFFFF !important;
+  border-color: #8797A7 !important;
+}
+
+.panel, .stat-card, .customer-card, .service-card,
+.staff-card, .business-card, .booking-card, .modal,
+.auth-form, .form-panel, .empty-state {
+  background: linear-gradient(145deg, #8797A7, #6F8295) !important;
+  color: #26394E !important;
+  border: 1px solid #AEBBC8 !important;
+  border-radius: 16px !important;
+  box-shadow: 0 8px 22px rgba(0,0,0,.28),
+              inset 0 1px 0 rgba(255,255,255,.25) !important;
+}
+
+button, .primary-button, .ai-chat-button {
+  background: linear-gradient(145deg, #AAB8C6, #8797A7) !important;
+  color: #26394E !important;
+  border: 1px solid #C4D0DC !important;
+  border-radius: 10px !important;
+  box-shadow: 0 4px 0 #52677C,
+              0 7px 15px rgba(0,0,0,.25) !important;
+  transition: transform .2s ease, box-shadow .2s ease !important;
+}
+
+button:hover, .primary-button:hover, .ai-chat-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 0 #52677C,
+              0 12px 22px rgba(0,0,0,.35) !important;
+}
+
+input, select, textarea {
+  background: #FFFFFF !important;
+  color: #26394E !important;
+  border: 1px solid #8797A7 !important;
+  border-radius: 9px !important;
+}
+
+input:focus, select:focus, textarea:focus {
+  outline: 2px solid #8797A7 !important;
+  box-shadow: 0 0 12px rgba(135,151,167,.45) !important;
+}
+
+.ai-chat-message, .ai-chat-bot, .ai-chat-user {
+  background: #26394E !important;
+  color: #FFFFFF !important;
+  border: 1px solid #8797A7 !important;
+  border-radius: 14px !important;
+}
+
+/* BOOKEASY ELECTRONIC WAVES */
+body{background-color:#26394e!important;background-image:radial-gradient(ellipse at 15% 20%,rgba(135,151,167,.35),transparent 42%),radial-gradient(ellipse at 85% 75%,rgba(40,170,255,.18),transparent 40%)!important;background-attachment:fixed!important}
+@keyframes be-wave-drift{0%{transform:translateY(0)}50%{transform:translateY(-5px)}100%{transform:translateY(0)}}
+
+/* BOOKEASY - GLOBAL UI POLISH */
+:root {
+  --navy: #26394E;
+  --blue: #8797A7;
+  --blue-dark: #26394E;
+  --ink: #FFFFFF;
+  --muted: #E1E6EF;
+  --line: #8797A7;
+  --surface: #26394E;
+  --cream: #26394E;
+}
+
+/* Remove remaining brown/beige surfaces */
+.auth-layout,
+.auth-form-wrap,
+.auth-aside,
+.auth-form,
+.auth-form-inner,
+.auth-panel,
+.login-panel,
+.register-panel,
+.form-panel,
+.empty-state {
+  background: linear-gradient(145deg, #26394E, #30465D) !important;
+  color: #FFFFFF !important;
+  border-color: #8797A7 !important;
+}
+
+/* Readable text */
+body,
+#root,
+.app-shell,
+.main-content,
+.customer-page,
+.public-page {
+  color: #FFFFFF !important;
+  font-size: 16px;
+}
+
+h1, h2, h3, h4,
+.auth-aside h1,
+.auth-form h2,
+.panel h2,
+.panel h3 {
+  color: #FFFFFF !important;
+  line-height: 1.3 !important;
+}
+
+p, label, small, .muted, .description,
+.auth-aside p,
+.auth-form label {
+  color: #E1E6EF !important;
+}
+
+small {
+  font-size: 13px !important;
+  line-height: 1.5 !important;
+}
+
+a {
+  color: #E1E6EF !important;
+  text-underline-offset: 4px;
+}
+
+/* Bigger, clearer buttons */
+button,
+.primary-button,
+.secondary-button,
+.ai-chat-button,
+input[type="submit"],
+input[type="button"] {
+  min-height: 44px;
+  padding: 11px 18px !important;
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  letter-spacing: .2px;
+  border-radius: 12px !important;
+  cursor: pointer;
+  transition: transform .2s ease, box-shadow .2s ease,
+              background .2s ease !important;
+}
+
+button,
+.primary-button,
+.ai-chat-button,
+input[type="submit"] {
+  background: linear-gradient(135deg, #AAB8C6, #8797A7) !important;
+  color: #26394E !important;
+  border: 1px solid #D4DEE8 !important;
+  box-shadow: 0 4px 0 #52677C,
+              0 8px 18px rgba(0,0,0,.25) !important;
+}
+
+button:hover,
+.primary-button:hover,
+.ai-chat-button:hover,
+input[type="submit"]:hover {
+  filter: brightness(1.08);
+  transform: translateY(-2px);
+}
+
+/* Inputs */
+input, select, textarea {
+  min-height: 44px;
+  font-size: 16px !important;
+  border: 1px solid #8797A7 !important;
+  border-radius: 10px !important;
+  box-sizing: border-box;
+}
+
+input:focus, select:focus, textarea:focus {
+  outline: 2px solid #AAB8C6 !important;
+  outline-offset: 2px;
+}
+
+/* Consistent 3D cards */
+.panel, .stat-card, .customer-card,
+.service-card, .staff-card, .business-card,
+.booking-card, .modal, .auth-form,
+.form-panel, .empty-state {
+  border-radius: 18px !important;
+  box-shadow: 0 10px 26px rgba(0,0,0,.28),
+              inset 0 1px 0 rgba(255,255,255,.12) !important;
+}
+
+/* Softer electronic glow */
+button:focus-visible, a:focus-visible {
+  outline: 2px solid #E1E6EF !important;
+  outline-offset: 3px;
+}
+
+::selection {
+  background: #8797A7;
+  color: #26394E;
+}
+
+@media (max-width: 600px) {
+  body { font-size: 16px !important; }
+  button, .primary-button, .secondary-button {
+    min-height: 46px;
+  }
+}
+
+
+/* BOOKEASY LOGIN — LIGHT BLUE-GRAY ELECTRONIC WAVES */
+
+.auth-layout {
+  position: relative !important;
+  isolation: isolate !important;
+  overflow: hidden !important;
+  background:
+    radial-gradient(ellipse at 15% 15%, rgba(225,230,239,.95), transparent 42%),
+    radial-gradient(ellipse at 85% 80%, rgba(135,151,167,.55), transparent 45%),
+    linear-gradient(135deg, #8797A7 0%, #52677C 48%, #26394E 100%) !important;
+  color: #FFFFFF !important;
+}
+
+/* Animated electronic wave lines */
+.auth-layout::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: -30%;
+  pointer-events: none;
+  background:
+    repeating-radial-gradient(
+      ellipse at 20% 50%,
+      transparent 0 35px,
+      rgba(225,230,239,.22) 36px 38px,
+      transparent 39px 58px
+    ),
+    repeating-linear-gradient(
+      125deg,
+      transparent 0 70px,
+      rgba(225,230,239,.10) 71px 73px,
+      transparent 74px 115px
+    );
+  transform: rotate(-8deg);
+  animation: bookeasy-wave-motion 18s ease-in-out infinite alternate;
+}
+
+/* Soft luminous wave */
+.auth-layout::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  pointer-events: none;
+  width: 65%;
+  height: 55%;
+  right: -12%;
+  top: 20%;
+  border-radius: 50%;
+  border: 1px solid rgba(225,230,239,.38);
+  box-shadow:
+    0 0 25px rgba(225,230,239,.13),
+    inset 0 0 35px rgba(135,151,167,.18);
+  transform: rotate(-18deg);
+}
+
+/* Remove remaining beige from login panels */
+.auth-aside,
+.auth-form-wrap,
+.auth-form {
+  background-color: transparent !important;
+  color: #FFFFFF !important;
+  border-color: rgba(225,230,239,.4) !important;
+}
+
+.auth-aside h1,
+.auth-aside p,
+.auth-aside small,
+.auth-form h2,
+.auth-form label {
+  color: #FFFFFF !important;
+}
+
+.auth-form input {
+  background: #FFFFFF !important;
+  color: #26394E !important;
+  border: 1px solid #8797A7 !important;
+  border-radius: 10px !important;
+  min-height: 46px;
+  font-size: 16px !important;
+}
+
+.auth-form button {
+  min-height: 46px;
+  font-size: 16px !important;
+  font-weight: 700 !important;
+  border-radius: 12px !important;
+  background: linear-gradient(135deg, #E1E6EF, #8797A7) !important;
+  color: #26394E !important;
+  box-shadow: 0 5px 0 #52677C,
+              0 9px 20px rgba(0,0,0,.22) !important;
+}
+
+@keyframes bookeasy-wave-motion {
+  from { transform: rotate(-8deg) translateY(0); }
+  to   { transform: rotate(-4deg) translateY(-18px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-layout::before {
+    animation: none !important;
+  }
+}
+
+
+/* ===== BOOKEASY FUTURISTIC 3D UPGRADE ===== */
+:root {
+  --be-bg: #07111f;
+  --be-surface: rgba(18, 35, 58, 0.82);
+  --be-blue: #58a6ff;
+  --be-cyan: #58d9e8;
+  --be-border: rgba(88, 166, 255, 0.24);
+}
+
+/* Smooth interaction defaults */
+button,
+[role="button"],
+a,
+input,
+select,
+textarea {
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    border-color 180ms ease,
+    background-color 180ms ease;
+}
+
+/* Futuristic glass surfaces */
+.auth-aside,
+.auth-form-wrap,
+.auth-form {
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+/* Premium 3D buttons */
+button {
+  transform: translateZ(0);
+  box-shadow:
+    0 5px 0 rgba(5, 15, 30, 0.55),
+    0 10px 24px rgba(0, 0, 0, 0.18);
+}
+
+button:hover {
+  filter: brightness(1.06);
+}
+
+button:active {
+  transform: translateY(2px);
+  box-shadow: 0 2px 0 rgba(5, 15, 30, 0.55);
+}
+
+/* Neon focus rings */
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--be-blue) !important;
+  box-shadow:
+    0 0 0 3px rgba(88, 166, 255, 0.16),
+    0 0 18px rgba(88, 166, 255, 0.12);
+}
+
+/* Respect accessibility preferences */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* BOOKEASY VISIBLE 3D LOGIN THEME */
+.auth-layout {
+  position: relative !important;
+  isolation: isolate;
+  background:
+    radial-gradient(ellipse at 15% 20%, #174d79 0%, transparent 45%),
+    radial-gradient(ellipse at 85% 80%, #07545f 0%, transparent 42%),
+    linear-gradient(135deg, #06101e, #102b48 55%, #071321) !important;
+}
+
+.auth-aside {
+  background: linear-gradient(145deg, #0b2038, #123958) !important;
+  border-right: 1px solid rgba(88,217,232,.45);
+}
+
+.auth-form-wrap {
+  background: transparent !important;
+  perspective: 1000px;
+}
+
+.auth-form {
+  padding: 36px !important;
+  border: 1px solid rgba(88,166,255,.55) !important;
+  border-radius: 24px !important;
+  background: linear-gradient(145deg, #183653, #09192b) !important;
+  color: #f1f7ff !important;
+  box-shadow: 0 30px 65px rgba(0,0,0,.5),
+              0 0 35px rgba(88,166,255,.2),
+              inset 0 1px rgba(255,255,255,.15) !important;
+}
+
+.auth-form h2,
+.auth-form label,
+.auth-aside h1 {
+  color: #f1f7ff !important;
+}
+
+.auth-form .eyebrow {
+  color: #58d9e8 !important;
+}
+
+.auth-form > p,
+.auth-switch {
+  color: #b5c8de !important;
+}
+
+.auth-form input {
+  min-height: 48px !important;
+  border: 1px solid #52718f !important;
+  border-radius: 11px !important;
+  background: #f7fbff !important;
+  color: #10243d !important;
+}
+
+.auth-form input:focus {
+  border-color: #58d9e8 !important;
+  box-shadow: 0 0 0 3px rgba(88,217,232,.22),
+              0 0 20px rgba(88,217,232,.2) !important;
+}
+
+.auth-form button[type="submit"] {
+  min-height: 49px !important;
+  border: 1px solid #8beaff !important;
+  border-radius: 12px !important;
+  background: linear-gradient(135deg, #58d9e8, #58a6ff) !important;
+  color: #071827 !important;
+  font-weight: 800 !important;
+  box-shadow: 0 6px 0 #245b85,
+              0 12px 25px rgba(43,153,219,.3) !important;
+}
+
+.auth-form button[type="submit"]:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.1);
+}
+
+@media (max-width: 800px) {
+  .auth-form {
+    padding: 26px 20px !important;
+  }
+}
+
+/* ===== BOOKEASY LIVE 3D MOTION ===== */
+
+.auth-layout {
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.auth-layout::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  pointer-events: none;
+  width: 75vw;
+  height: 75vw;
+  max-width: 1000px;
+  max-height: 1000px;
+  top: -35%;
+  left: 10%;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    rgba(88,166,255,.15) 60deg,
+    transparent 120deg,
+    rgba(88,217,232,.2) 190deg,
+    transparent 260deg,
+    rgba(88,166,255,.12) 320deg,
+    transparent 360deg
+  );
+  filter: blur(45px);
+  animation: be-orbit-glow 22s linear infinite;
+}
+
+.auth-layout::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  pointer-events: none;
+  width: 340px;
+  height: 340px;
+  right: 5%;
+  bottom: -100px;
+  border-radius: 50%;
+  background: rgba(40,155,220,.18);
+  filter: blur(75px);
+  animation: be-floating-light 7s ease-in-out infinite alternate;
+}
+
+.auth-aside {
+  position: relative;
+  overflow: hidden;
+}
+
+.auth-aside::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  width: 260px;
+  height: 260px;
+  right: -90px;
+  top: 20%;
+  border-radius: 50%;
+  border: 1px solid rgba(88,217,232,.2);
+  box-shadow:
+    0 0 40px rgba(88,166,255,.12),
+    inset 0 0 35px rgba(88,217,232,.08);
+  animation: be-ring-float 9s ease-in-out infinite alternate;
+}
+
+.auth-form {
+  animation: be-card-enter .9s cubic-bezier(.2,.8,.2,1) both,
+             be-card-float 6s ease-in-out 1s infinite;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+.auth-form input {
+  transition: border-color .25s ease,
+              box-shadow .25s ease,
+              transform .25s ease !important;
+}
+
+.auth-form input:hover {
+  border-color: #58a6ff !important;
+}
+
+.auth-form button[type="submit"] {
+  position: relative;
+  overflow: hidden;
+  transition: transform .22s ease,
+              box-shadow .22s ease,
+              filter .22s ease !important;
+}
+
+.auth-form button[type="submit"]::after {
+  content: "";
+  position: absolute;
+  top: -50%;
+  left: -75%;
+  width: 45%;
+  height: 200%;
+  transform: rotate(25deg);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255,255,255,.55),
+    transparent
+  );
+  transition: left .65s ease;
+  pointer-events: none;
+}
+
+.auth-form button[type="submit"]:hover::after {
+  left: 140%;
+}
+
+.auth-form button[type="submit"]:hover {
+  transform: translateY(-3px) scale(1.015);
+  box-shadow: 0 9px 0 #245b85,
+              0 18px 32px rgba(43,153,219,.4) !important;
+}
+
+@keyframes be-orbit-glow {
+  from { transform: rotate(0deg) scale(1); }
+  to { transform: rotate(360deg) scale(1.08); }
+}
+
+@keyframes be-floating-light {
+  from { transform: translate3d(-35px,-20px,0) scale(.9); }
+  to { transform: translate3d(20px,-90px,0) scale(1.2); }
+}
+
+@keyframes be-ring-float {
+  from { transform: translate3d(0,-15px,0) rotate(0deg); }
+  to { transform: translate3d(-20px,25px,0) rotate(18deg); }
+}
+
+@keyframes be-card-enter {
+  from { opacity: 0; translate: 0 18px; }
+  to { opacity: 1; translate: 0 0; }
+}
+
+@keyframes be-card-float {
+  0%, 100% { margin-top: 0; }
+  50% { margin-top: -7px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-layout::before,
+  .auth-layout::after,
+  .auth-aside::after,
+  .auth-form {
+    animation: none !important;
+  }
+}
+
+/* ===== BOOKEASY ANIMATED ELECTRONIC WAVES ===== */
+
+.auth-layout {
+  position: relative !important;
+  isolation: isolate;
+  overflow: hidden !important;
+}
+
+.auth-layout .auth-aside,
+.auth-layout .auth-form-wrap {
+  position: relative;
+  z-index: 2;
+}
+
+/* Animated neon electronic lines */
+.auth-layout::before {
+  content: "";
+  position: absolute;
+  z-index: 1;
+  pointer-events: none;
+  left: -15%;
+  right: -15%;
+  top: 10%;
+  height: 80%;
+  opacity: .75;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      transparent 0px,
+      transparent 44px,
+      rgba(88,217,232,.12) 45px,
+      transparent 46px
+    );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent,
+    black 25%,
+    black 75%,
+    transparent
+  );
+  animation: be-electronic-grid 14s linear infinite;
+}
+
+/* Glowing moving wave lines */
+.auth-layout .auth-aside::before {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  z-index: 0;
+  left: -30%;
+  top: 15%;
+  width: 160%;
+  height: 65%;
+  opacity: .8;
+  background:
+    repeating-radial-gradient(
+      ellipse at 50% 50%,
+      transparent 0px,
+      transparent 18px,
+      rgba(88,166,255,.65) 19px,
+      rgba(88,217,232,.12) 21px,
+      transparent 23px,
+      transparent 37px
+    );
+  transform: rotate(-12deg) scaleY(.48);
+  filter: drop-shadow(0 0 7px rgba(88,217,232,.7));
+  animation: be-wave-motion 9s ease-in-out infinite alternate;
+}
+
+/* Second electric pulse */
+.auth-layout .auth-aside::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  z-index: 0;
+  left: -20%;
+  bottom: 5%;
+  width: 145%;
+  height: 35%;
+  border-top: 2px solid rgba(88,217,232,.65);
+  border-radius: 50%;
+  box-shadow:
+    0 -8px 18px rgba(88,166,255,.35),
+    0 -18px 35px rgba(88,217,232,.15);
+  transform: rotate(-8deg);
+  animation: be-pulse-line 5s ease-in-out infinite alternate;
+}
+
+@keyframes be-electronic-grid {
+  from { transform: translateX(0); }
+  to { transform: translateX(90px); }
+}
+
+@keyframes be-wave-motion {
+  0% {
+    transform: translateX(-25px) rotate(-12deg) scaleY(.42);
+    filter: drop-shadow(0 0 5px rgba(88,217,232,.45));
+  }
+  100% {
+    transform: translateX(35px) rotate(-5deg) scaleY(.65);
+    filter: drop-shadow(0 0 13px rgba(88,166,255,.9));
+  }
+}
+
+@keyframes be-pulse-line {
+  from {
+    transform: translateX(-20px) rotate(-8deg) scaleY(.8);
+    opacity: .35;
+  }
+  to {
+    transform: translateX(30px) rotate(5deg) scaleY(1.3);
+    opacity: .9;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-layout::before,
+  .auth-layout .auth-aside::before,
+  .auth-layout .auth-aside::after {
+    animation: none !important;
+  }
+}
+
+
+/* ===== BOOKEASY ELECTRIC TEXT COLORS ===== */
+
+.auth-aside,
+.auth-aside h1,
+.auth-aside h2,
+.auth-aside h3,
+.auth-aside p,
+.auth-aside span,
+.auth-aside strong {
+  color: #f2fbff !important;
+}
+
+.auth-aside h1 {
+  text-shadow:
+    0 0 10px rgba(88,217,232,.35),
+    0 0 25px rgba(88,166,255,.2) !important;
+}
+
+.auth-aside p {
+  color: #b9d9f4 !important;
+}
+
+.auth-aside .eyebrow {
+  color: #58d9e8 !important;
+  letter-spacing: 3px;
+  text-shadow: 0 0 12px rgba(88,217,232,.5);
+}
+
+.auth-form,
+.auth-form h1,
+.auth-form h2,
+.auth-form h3,
+.auth-form label,
+.auth-switch {
+  color: #f2fbff !important;
+}
+
+.auth-form .eyebrow {
+  color: #58d9e8 !important;
+}
+
+
+/* Fix brown italic word: Perissoteri */
+.auth-aside em,
+.auth-aside h1 em,
+.auth-aside h2 em,
+.auth-aside p em {
+  color: #58d9e8 !important;
+  -webkit-text-fill-color: #58d9e8 !important;
+  font-style: italic;
+  text-shadow:
+    0 0 8px rgba(88,217,232,.55),
+    0 0 20px rgba(88,166,255,.3) !important;
+}

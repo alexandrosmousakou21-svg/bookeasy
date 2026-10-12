@@ -5,9 +5,21 @@
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "theme_color": "#718A68",
-  "background_color": "#F5F0E6",
+  "theme_color": "#C9A98F",
+  "background_color": "#F6EFE6",
   "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
     {
       "src": "/icons/icon-192.svg",
       "sizes": "192x192",
