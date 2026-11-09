@@ -159,10 +159,38 @@ Deno.serve(async (req) => {
         .from("professional_push_deliveries")
         .insert({ notification_id: notification.id, subscription_id: subscription.id });
       if (claimError?.code === "23505") {
-        skipped += 1;
-        continue;
-      }
-      if (claimError) {
+        // Only a previously failed, undelivered attempt may be retried; the conditional update lets one caller win.
+        const { data: reclaimed, error: reclaimError } = await admin
+          .from("professional_push_deliveries")
+          .select("attempt_count,last_error_code")
+          .eq("notification_id", notification.id)
+          .eq("subscription_id", subscription.id)
+          .is("delivered_at", null)
+          .not("last_error_code", "is", null)
+          .maybeSingle();
+        if (reclaimError || !reclaimed || reclaimed.attempt_count >= 5 ||
+          ["push_400", "push_404", "push_410"].includes(reclaimed.last_error_code)) {
+          skipped += 1;
+          continue;
+        }
+        const { data: won, error: wonError } = await admin
+          .from("professional_push_deliveries")
+          .update({
+            attempt_count: reclaimed.attempt_count + 1,
+            attempted_at: new Date().toISOString(),
+            last_error_code: null,
+          })
+          .eq("notification_id", notification.id)
+          .eq("subscription_id", subscription.id)
+          .is("delivered_at", null)
+          .eq("attempt_count", reclaimed.attempt_count)
+          .not("last_error_code", "is", null)
+          .select("attempt_count");
+        if (wonError || !won?.length) {
+          skipped += 1;
+          continue;
+        }
+      } else if (claimError) {
         logPushError("delivery_claim_failed");
         failed += 1;
         continue;

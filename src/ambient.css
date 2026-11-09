@@ -7,7 +7,7 @@
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  background: linear-gradient(145deg, #f6f8fb, #dceaff 55%, #f6f8fb);
+  background: #E4E5E3;
 }
 
 .ambient-layer canvas {
@@ -18,19 +18,7 @@
 }
 
 .ambient-layer[data-scene="home"] {
-  background: #12356e;
-}
-
-.ambient-layer[data-scene="home"] canvas {
-  filter: saturate(1.3) brightness(.95);
-}
-
-.ambient-layer[data-scene="workspace"] canvas {
-  filter: saturate(.72) brightness(1.04);
-}
-
-.ambient-layer[data-scene="booking"] canvas {
-  filter: saturate(.85) brightness(1.06);
+  background: #262E10;
 }
 
 .ambient-layer.is-reduced canvas {
@@ -49,19 +37,13 @@
   background: rgba(246, 248, 251, .62);
 }
 
-.experience-content :is(.booking-card, .stat-card, .business-card, .service-card, .staff-card, .customer-appointment) {
-  background: rgba(255, 255, 255, .94);
-  box-shadow: 0 8px 26px rgba(18, 53, 110, .08), 0 1px 2px rgba(18, 53, 110, .06);
-  backdrop-filter: blur(12px);
-}
-
 .experience-content .home-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto minmax(160px, 1fr) auto auto;
   min-height: 100svh;
   padding: 36px max(32px, calc((100% - 1240px) / 2));
-  background: linear-gradient(100deg, rgba(10, 30, 65, .93), rgba(18, 53, 110, .76) 58%, rgba(18, 53, 110, .22));
+  background: linear-gradient(100deg, rgba(38, 46, 16, .93), rgba(64, 76, 30, .76) 58%, rgba(64, 76, 30, .22));
 }
 
 .experience-content .home-layout .auth-aside {
@@ -97,7 +79,7 @@
 
 .experience-content .home-layout .auth-aside p {
   max-width: 540px;
-  color: #e5efff;
+  color: #E4E5E3;
   font-size: 18px;
 }
 
@@ -124,7 +106,7 @@
 }
 
 .experience-content .home-layout .auth-form p {
-  color: #e5efff;
+  color: #E4E5E3;
 }
 
 .experience-content .home-layout .auth-form .full {
@@ -135,7 +117,7 @@
 
 .experience-content .home-layout .auth-aside > small {
   grid-row: 4;
-  color: #dceaff;
+  color: #E4E5E3;
 }
 
 .experience-content .home-layout :is(.auth-brand-row, .auth-aside > div:not(.auth-brand-row), .auth-form) {
@@ -148,47 +130,6 @@
 
 .experience-content :is(.customer-page, .public-page, .app-shell .content, .auth-layout:not(.home-layout)) {
   animation: page-enter 420ms ease-out both;
-}
-
-.experience-content :is(.panel, .booking-card, .stat-card, .business-card, .service-card, .staff-card, .customer-appointment, .customer-profile-panel) {
-  background-image: linear-gradient(145deg, rgba(255, 255, 255, .3), rgba(255, 255, 255, 0) 55%);
-  box-shadow: inset 0 1px rgba(255, 255, 255, .9), 0 10px 24px rgba(18, 53, 110, .09);
-}
-
-.experience-content :is(.app-shell, .customer-page, .public-page, .auth-layout) :is(.primary-button, .outline-button, .mini-action) {
-  transition: transform 180ms ease, box-shadow 180ms ease, background-color 180ms ease, border-color 180ms ease, color 180ms ease;
-}
-
-.experience-content :is(.app-shell, .customer-page, .public-page, .auth-layout) .primary-button {
-  background-image: linear-gradient(180deg, rgba(255, 255, 255, .18), transparent 55%);
-  box-shadow: inset 0 1px rgba(255, 255, 255, .35), inset 0 -2px rgba(8, 34, 79, .2), 0 5px 12px rgba(18, 53, 110, .23);
-}
-
-.experience-content :is(.app-shell, .customer-page, .public-page, .auth-layout) :is(.outline-button, .mini-action) {
-  background-image: linear-gradient(180deg, rgba(255, 255, 255, .8), rgba(229, 239, 255, .25));
-  box-shadow: inset 0 1px rgba(255, 255, 255, .95), inset 0 -2px rgba(18, 53, 110, .05), 0 3px 8px rgba(18, 53, 110, .08);
-}
-
-@media (hover: hover) {
-  .experience-content :is(.app-shell, .customer-page, .public-page, .auth-layout) :is(.primary-button, .outline-button, .mini-action):not(:disabled):hover {
-    transform: translateY(-2px);
-    box-shadow: inset 0 1px rgba(255, 255, 255, .3), 0 8px 18px rgba(18, 53, 110, .2);
-  }
-
-  .experience-content :is(.business-card, .service-card, .staff-card) {
-    transition: transform 220ms ease, box-shadow 220ms ease, border-color 220ms ease;
-  }
-
-  .experience-content :is(.business-card, .service-card, .staff-card):hover {
-    transform: perspective(900px) translateY(-3px) rotateX(1deg);
-    background-image: radial-gradient(200px circle at var(--reflection-x, 50%) var(--reflection-y, 0%), rgba(180, 214, 255, .36), transparent 70%), linear-gradient(145deg, rgba(255, 255, 255, .3), transparent 55%);
-    box-shadow: inset 0 1px #fff, 0 16px 30px rgba(18, 53, 110, .15);
-  }
-}
-
-.experience-content :is(.app-shell, .customer-page, .public-page, .auth-layout) :is(.primary-button, .outline-button, .mini-action):not(:disabled):active {
-  transform: translateY(1px);
-  box-shadow: inset 0 2px 5px rgba(18, 53, 110, .18);
 }
 
 @keyframes experience-enter {
@@ -242,7 +183,7 @@
   height: 28px;
   margin: 6px 0 4px;
   border-radius: 4px;
-  background: linear-gradient(100deg, var(--mystic-mint) 25%, #f6f8fb 50%, var(--mystic-mint) 75%);
+  background: linear-gradient(100deg, var(--mystic-mint) 25%, #E4E5E3 50%, var(--mystic-mint) 75%);
   background-size: 200% 100%;
   animation: skeleton-shimmer 1.8s ease-in-out infinite;
 }
@@ -380,11 +321,6 @@
     justify-content: flex-end;
     flex-wrap: wrap;
   }
-
-  .experience-content :is(.booking-card, .stat-card, .business-card, .service-card, .staff-card, .customer-appointment) {
-    backdrop-filter: none;
-    background: rgba(255, 255, 255, .97);
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -406,14 +342,6 @@
 
   .ambient-layer canvas {
     transition: none;
-  }
-
-  .experience-content :is(.app-shell, .customer-page, .public-page, .auth-layout) :is(.primary-button, .outline-button, .mini-action) {
-    transition: none;
-  }
-
-  .experience-content :is(.app-shell, .customer-page, .public-page, .auth-layout) :is(.primary-button, .outline-button, .mini-action):not(:disabled):hover {
-    transform: none;
   }
 
   .experience-content :is(.business-card, .service-card, .staff-card):hover {

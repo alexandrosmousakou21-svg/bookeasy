@@ -46,5 +46,12 @@ export async function invokeWithRetry(name, options, context = {}) {
     feature: context.feature || name,
     operation: context.operation || "edge-function",
   });
-  throw new Error("Η υπηρεσία δεν είναι προσωρινά διαθέσιμη. Δοκιμάστε ξανά.");
+  const failure = new Error("Η υπηρεσία δεν είναι προσωρινά διαθέσιμη. Δοκιμάστε ξανά.");
+  failure.status = lastError?.context?.status;
+  try {
+    failure.code = (await lastError?.context?.json?.())?.code;
+  } catch {
+    // The error body is optional diagnostic detail.
+  }
+  throw failure;
 }

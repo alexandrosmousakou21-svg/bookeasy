@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Link,
+  NavLink,
   useNavigate,
   useParams,
   useSearchParams,
@@ -10,7 +11,9 @@ import {
   ChevronRight,
   Clock3,
   LogOut,
+  MapPin,
   MessageCircle,
+  Phone,
   Search,
   Send,
   UserRound,
@@ -24,10 +27,13 @@ import {
 import { invokeWithRetry } from "./lib/functions";
 import { reportCriticalError } from "./lib/errorReporting";
 import { safeReturnPath } from "./lib/returnPath";
+import { EmptyState, Skeleton, useConfirm } from "./ui";
 
 const errorText = (error) =>
   error?.code === "23P01"
     ? "Η ώρα έχει ήδη κρατηθεί. Επιλέξτε άλλη διαθέσιμη ώρα."
+    : String(error?.code || "").startsWith("BK")
+      ? "Η επιλεγμένη ώρα δεν είναι διαθέσιμη. Ανανεώστε και επιλέξτε άλλη ώρα."
     : "Παρουσιάστηκε πρόβλημα. Ελέγξτε τη σύνδεσή σας και δοκιμάστε ξανά.";
 const readSessionValue = (key) => {
   try {
@@ -182,10 +188,46 @@ function CustomerShell({ children, headerAction }) {
     if (supabase) await supabase.auth.signOut();
   };
   return (
-    <div className="customer-page">
+    <div className={`customer-page${user ? " has-tab-bar" : ""}`}>
       <CustomerHeader user={user} onLogout={logout} headerAction={headerAction} />
       {children}
+      {user && (
+        <nav className="tab-bar customer-tab-bar" aria-label="Κύρια πλοηγήση">
+          {[
+            ["/customer", Search, "Αναζήτηση"],
+            ["/my-appointments", CalendarDays, "Ραντεβού"],
+            ["/customer/profile", UserRound, "Προφίλ"],
+            ["/customer/support", MessageCircle, "Υποστήριξη"],
+          ].map(([to, Icon, label]) => (
+            <NavLink key={to} to={to} end className={({ isActive }) => `tab-item${isActive ? " active" : ""}`}>
+              <Icon size={20} />
+              <span>{label}</span>
+            </NavLink>
+          ))}
+        </nav>
+      )}
     </div>
+  );
+}
+
+// Presentation only: progress is derived from the form state, booking rules stay in confirm() and the database.
+function BookingSteps({ serviceChosen, timeChosen, detailsDone, finished }) {
+  const flags = [serviceChosen, timeChosen, detailsDone, finished];
+  const current = finished ? 4 : flags.findIndex((done) => !done);
+  const labels = ["Υπηρεσία", "Ύρα", "Στοιχεία", "Επιβεβαίωση"];
+  return (
+    <ol className="stepper" aria-label="Βήματα κράτησης">
+      {labels.map((label, index) => (
+        <li
+          key={label}
+          data-step={index + 1}
+          className={flags[index] ? "is-done" : index === current ? "is-current" : ""}
+          aria-current={index === current ? "step" : undefined}
+        >
+          {label}
+        </li>
+      ))}
+    </ol>
   );
 }
 
@@ -265,7 +307,7 @@ export function CustomerHome() {
               <span className="eyebrow">ΕΠΙΧΕΙΡΗΣΕΙΣ</span>
               <h2>Επιλέξτε πού θέλετε να πάτε</h2>
             </div>
-            <span>{filtered.length} διαθέσιμες</span>
+            <span>{`${filtered.length} διαθέσιμες`}</span>
           </div>
           {error && <CustomerNotice message={error} />}
           {loading ? (
@@ -784,7 +826,17 @@ export function CustomerBooking({ dashboardMode = false, business: dashboardBusi
       if (chatMode === "ai") {
         const result = await invokeWithRetry(
           "customer-assistant",
-          { body: { business_slug: data.business.slug, message: text } },
+          {
+            body: {
+              business_slug: data.business.slug,
+              message: text,
+              history: chatMessages
+                .filter((item) => item.sender_type === "customer" || item.sender_type === "assistant")
+                .slice(1)
+                .slice(-6)
+                .map((item) => ({ role: item.sender_type === "customer" ? "user" : "assistant", content: item.body })),
+            },
+          },
           { feature: "customer-service-ai", operation: "answer-question", attempts: 1, timeoutMs: 48000 },
         );
         setChatMessages((current) => [
@@ -1162,7 +1214,7 @@ export function CustomerBooking({ dashboardMode = false, business: dashboardBusi
           style={
             data.business.cover_image_url
               ? {
-                  backgroundImage: `linear-gradient(180deg, rgba(121,85,72,.14), #F5F0E6), url(${data.business.cover_image_url})`,
+                  backgroundImage: `linear-gradient(180deg, rgba(64,76,30,.18), #E4E5E3), url(${data.business.cover_image_url})`,
                   backgroundSize: "cover",
                   backgroundPosition: "center",
                 }
@@ -1180,11 +1232,11 @@ export function CustomerBooking({ dashboardMode = false, business: dashboardBusi
           <p>{data.business.description}</p>
           <div className="business-facts">
             <span>
-              ⌖ {data.business.address || "Διεύθυνση δεν έχει οριστεί"}
+              <MapPin size={15} aria-hidden="true" /> {data.business.address || "Διεύθυνση δεν έχει οριστεί"}
             </span>
-            <span>☎ {data.business.phone || "Τηλέφωνο δεν έχει οριστεί"}</span>
+            <span><Phone size={15} aria-hidden="true" /> {data.business.phone || "Τηλέφωνο δεν έχει οριστεί"}</span>
             <span>
-              ◷{" "}
+              <Clock3 size={15} aria-hidden="true" />{" "}
               {data.hours
                 .filter((hour) => !hour.is_closed && !hour.staff_id)
                 .map(
@@ -1221,6 +1273,12 @@ export function CustomerBooking({ dashboardMode = false, business: dashboardBusi
           </div>
         </section>
         <section className="booking-card">
+          <BookingSteps
+            serviceChosen={Boolean(serviceId)}
+            timeChosen={Boolean(time) && slots.includes(time)}
+            detailsDone={Boolean(details.name.trim() && details.phone.trim() && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(details.email.trim()))}
+            finished={Boolean(success)}
+          />
           {success ? (
             <div className="success-state">
               <div className="success-icon">✓</div>
@@ -1522,6 +1580,7 @@ export function CustomerAppointmentsPage() {
   const [error, setError] = useState("");
   const [loadingData, setLoadingData] = useState(true);
   const [canceling, setCanceling] = useState(null);
+  const confirm = useConfirm();
   const appointmentsRef = useRef([]);
   const customerCancelledIds = useRef(new Set());
   const load = async () => {
@@ -1593,6 +1652,13 @@ export function CustomerAppointmentsPage() {
   }, [user, loading, navigate]);
   const cancel = async (id) => {
     if (!supabase || !user || canceling) return;
+    if (!await confirm({
+      title: "Ακύρωση ραντεβού",
+      message: "Η ώρα θα ελευθερωθεί και η επιχείρηση θα ενημερωθεί. Για νέα ώρα θα χρειαστεί να κλείσετε ξανά.",
+      confirmLabel: "Ακύρωση ραντεβού",
+      cancelLabel: "Πίσω",
+      tone: "danger",
+    })) return;
     setCanceling(id);
     setError("");
     customerCancelledIds.current.add(id);
@@ -1633,15 +1699,23 @@ export function CustomerAppointmentsPage() {
       <main className="customer-content">
         <div className="customer-page-heading">
           <span className="eyebrow">ΠΕΛΑΤΗΣ</span>
-          <h1>Τα ραντεβού μου</h1>
-          <p>Όλες οι επόμενες, παλιές και ακυρωμένες κρατήσεις σας.</p>
+          <h1>
+            {user
+              ? `Γεια σου, ${(user.user_metadata?.full_name || user.email?.split("@")[0] || "").split(" ")[0]}`
+              : "Τα ραντεβού μου"}
+          </h1>
+          <p>
+            {!loadingData && groups.upcoming.length
+              ? `Το επόμενο ραντεβού σας: ${new Date(groups.upcoming[groups.upcoming.length - 1].starts_at).toLocaleString("el-GR", { dateStyle: "full", timeStyle: "short" })}.`
+              : "Όλες οι επόμενες, παλιές και ακυρωμένες κρατήσεις σας."}
+          </p>
         </div>
         {appointmentUpdateMessage && (
           <div className="notice success" role="status">{appointmentUpdateMessage}</div>
         )}
         <CustomerNotice message={error} />
         {loading || loadingData ? (
-          <CustomerLoading />
+          <Skeleton lines={5} />
         ) : (
           <div className="customer-appointments-groups">
             {Object.entries(groups).map(([key, items]) => (
@@ -1695,12 +1769,17 @@ export function CustomerAppointmentsPage() {
                           {canceling === appointment.id ? "Ακύρωση..." : "Ακύρωση"}
                         </button>
                       )}
+                      {key !== "upcoming" && appointment.business?.slug && (
+                        <Link className="rebook-link" to={`/b/${encodeURIComponent(appointment.business.slug)}`}>
+                          Κλείσε ξανά <ChevronRight size={15} />
+                        </Link>
+                      )}
                     </div>
                   ))
                 ) : (
-                  <div className="empty-state">
-                    Δεν υπάρχουν ραντεβού σε αυτή την κατηγορία.
-                  </div>
+                  <EmptyState icon={CalendarDays} title="Δεν υπάρχουν ραντεβού σε αυτή την κατηγορία">
+                    {key === "upcoming" ? "Αναζητήστε μια επιχείρηση και κλείστε την επόμενη ώρα σας." : null}
+                  </EmptyState>
                 )}
               </section>
             ))}

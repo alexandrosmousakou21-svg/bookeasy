@@ -17,30 +17,37 @@ const vertexShader = `
 
 const fragmentShader = `
   uniform float uTime;
+  uniform float uTone;
   uniform vec2 uPointer;
   varying vec2 vUv;
   varying float vHeight;
   float ribbon(vec2 uv, float offset, float phase, float width) {
     float curve = offset + 0.12 * sin(uv.x * 4.2 + phase) + 0.07 * sin(uv.x * 8.0 - phase * 0.7);
-    float distanceToCurve = abs(uv.y - curve);
-    return exp(-distanceToCurve * width);
+    return exp(-abs(uv.y - curve) * width);
   }
   void main() {
     vec2 uv = vUv + uPointer * 0.025;
     float wave = sin(uv.x * 9.0 + uv.y * 6.0 + sin(uv.y * 5.0 - uTime * 0.19) * 1.9 + uTime * 0.24);
     float wave2 = cos(uv.x * 5.0 - uv.y * 9.0 + uTime * 0.18);
     float light = pow(max(0.0, wave * 0.5 + 0.5), 7.0);
-    vec3 powder = vec3(0.965, 0.973, 0.984);
-    vec3 blue = vec3(0.53, 0.70, 0.89);
-    vec3 deep = vec3(0.07, 0.21, 0.43);
-    vec3 color = mix(powder, blue, clamp(0.42 + wave * 0.30 + wave2 * 0.18 + vHeight * 0.08, 0.0, 0.9));
-    color = mix(color, deep, 0.035 + max(0.0, -wave2) * 0.045);
-    color += light * vec3(0.14, 0.15, 0.16);
+    // Brand palette: Sage Gray, Light Slate Blue, Soft Indigo, Lime, Deep Olive.
+    vec3 sage = vec3(0.894, 0.898, 0.890);
+    vec3 slate = vec3(0.431, 0.604, 0.784);
+    vec3 indigo = vec3(0.341, 0.396, 0.761);
+    vec3 lime = vec3(0.635, 0.769, 0.188);
+    vec3 olive = vec3(0.251, 0.298, 0.118);
+    vec3 night = vec3(0.150, 0.180, 0.063);
+    float field = clamp(0.5 + wave * 0.30 + wave2 * 0.18 + vHeight * 0.08, 0.0, 1.0);
+    vec3 dayColor = mix(sage, mix(sage, slate, 0.34), field);
+    dayColor = mix(dayColor, indigo, max(0.0, -wave2) * 0.05);
+    vec3 nightColor = mix(night, olive, field * 0.85);
+    nightColor = mix(nightColor, indigo, max(0.0, wave2) * 0.20);
+    vec3 color = mix(dayColor, nightColor, uTone);
     float flow = ribbon(uv, 0.30, uTime * 0.18, 58.0);
     flow += ribbon(uv, 0.49, uTime * 0.14 + 1.8, 84.0) * 0.75;
     flow += ribbon(uv, 0.72, uTime * 0.12 + 3.5, 110.0) * 0.5;
-    color += flow * vec3(0.09, 0.14, 0.21);
-    color -= ribbon(uv, 0.27, uTime * 0.18, 26.0) * vec3(0.025, 0.035, 0.045);
+    color += flow * mix(vec3(0.05, 0.08, 0.12), vec3(0.18, 0.30, 0.10), uTone);
+    color += light * mix(vec3(0.05, 0.06, 0.04), lime * 0.22, uTone);
     float particles = 0.0;
     for (int index = 0; index < PARTICLE_COUNT; index++) {
       float seed = float(index);
@@ -48,7 +55,7 @@ const fragmentShader = `
                          0.5 + 0.40 * cos(seed * 1.7 + uTime * (0.02 + seed * 0.003)));
       particles += 1.0 - smoothstep(0.002, 0.006, length(uv - center));
     }
-    color += particles * vec3(0.13, 0.14, 0.15);
+    color += particles * mix(vec3(0.10, 0.12, 0.08), lime * 0.55, uTone);
     gl_FragColor = vec4(color, 1.0);
   }
 `;
@@ -76,7 +83,7 @@ export function startAmbientScene(canvas) {
     vertexShader,
     fragmentShader,
     defines: { PARTICLE_COUNT: lowPower ? 3 : 6 },
-    uniforms: { uTime: { value: 0 }, uPointer: { value: new THREE.Vector2() } },
+    uniforms: { uTime: { value: 0 }, uTone: { value: 0 }, uPointer: { value: new THREE.Vector2() } },
   });
   scene.add(new THREE.Mesh(geometry, material));
   const pointerTarget = new THREE.Vector2();
@@ -95,7 +102,7 @@ export function startAmbientScene(canvas) {
       ));
     }
     const strandGeometry = new THREE.BufferGeometry().setFromPoints(points);
-    const strandMaterial = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: .36, depthWrite: false });
+    const strandMaterial = new THREE.LineBasicMaterial({ color: 0xa2c430, transparent: true, opacity: .34, depthWrite: false });
     floatingGeometries.push(strandGeometry);
     floatingMaterials.push(strandMaterial);
     floating.add(new THREE.Line(strandGeometry, strandMaterial));
@@ -153,6 +160,9 @@ export function startAmbientScene(canvas) {
       resize();
     }
     material.uniforms.uTime.value = elapsed;
+    const toneTarget = canvas.parentElement?.dataset.scene === "home" ? 1 : 0;
+    const tone = material.uniforms.uTone;
+    tone.value += (toneTarget - tone.value) * Math.min(1, delta * 2.2);
     material.uniforms.uPointer.value.lerp(pointerTarget, 0.035);
     floating.rotation.z = Math.sin(elapsed * .08) * .04;
     floating.position.x = material.uniforms.uPointer.value.x * .06;

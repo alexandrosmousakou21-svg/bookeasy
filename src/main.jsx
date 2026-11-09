@@ -9,6 +9,8 @@ import { reportCriticalError } from './lib/errorReporting'
 import './styles.css'
 import './functional.css'
 import './customer.css'
+import './brand.css'
+import { UiProvider } from './ui'
 
 window.addEventListener('error', (event) => {
   reportCriticalError(event.error || event.message, {
@@ -41,7 +43,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <BrowserRouter>
       <ErrorBoundary>
-        <AmbientExperience><App /></AmbientExperience>
+        <AmbientExperience><UiProvider><App /></UiProvider></AmbientExperience>
       </ErrorBoundary>
     </BrowserRouter>
   </React.StrictMode>

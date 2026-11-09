@@ -1,34 +1,48 @@
 :root {
   color-scheme: light;
-  --arctic-powder: #f6f8fb;
-  --mystic-mint: #e5efff;
-  --forsythia: #8ab8ff;
-  --deep-saffron: #ed8d32;
-  --nocturnal: #1664d9;
-  --oceanic-noir: #172033;
+  /* Brand palette */
+  --sage-gray: #E4E5E3;
+  --chartreuse: #9DB644;
+  --lime: #A2C430;
+  --soft-indigo: #5765C2;
+  --slate-blue: #678FB4;
+  --slate-blue-light: #6E9AC8;
+  --deep-olive: #404C1E;
+  --secondary-olive: #4C5339;
 
-  --color-background: var(--arctic-powder);
+  /* Legacy names kept so existing rules resolve to the brand palette */
+  --arctic-powder: var(--sage-gray);
+  --mystic-mint: color-mix(in srgb, var(--sage-gray) 55%, white);
+  --forsythia: var(--lime);
+  --deep-saffron: var(--chartreuse);
+  --nocturnal: var(--deep-olive);
+  --oceanic-noir: var(--deep-olive);
+
+  --color-background: var(--sage-gray);
   --color-surface: #FFFFFF;
-  --color-surface-muted: var(--mystic-mint);
-  --color-text: var(--oceanic-noir);
-  --color-text-muted: #526174;
+  --color-surface-muted: color-mix(in srgb, var(--sage-gray) 55%, white);
+  --color-text: var(--deep-olive);
+  --color-text-muted: var(--secondary-olive);
   --color-text-inverse: #FFFFFF;
-  --color-border: #d5e2f4;
-  --color-border-strong: #a9bdd9;
-  --color-primary: var(--nocturnal);
-  --color-primary-hover: var(--oceanic-noir);
-  --color-accent: var(--forsythia);
-  --color-accent-warm: var(--deep-saffron);
-  --color-success: #216451;
-  --color-success-surface: #E5F3EC;
-  --color-warning: #744700;
-  --color-warning-surface: #FFF4CF;
+  --color-border: color-mix(in srgb, var(--sage-gray) 75%, var(--secondary-olive));
+  --color-border-strong: color-mix(in srgb, var(--sage-gray) 40%, var(--secondary-olive));
+  --color-primary: var(--deep-olive);
+  --color-primary-hover: var(--secondary-olive);
+  --color-accent: var(--lime);
+  --color-accent-warm: var(--chartreuse);
+  --color-ai: var(--soft-indigo);
+  --color-ai-surface: color-mix(in srgb, var(--soft-indigo) 10%, white);
+  /* Status colors are functional, not brand: olive for success, a single red for errors. */
+  --color-success: var(--deep-olive);
+  --color-success-surface: color-mix(in srgb, var(--lime) 22%, white);
+  --color-warning: var(--secondary-olive);
+  --color-warning-surface: color-mix(in srgb, var(--chartreuse) 22%, white);
   --color-danger: #A2372C;
-  --color-danger-surface: #FFF0ED;
-  --shadow-card: 0 4px 18px rgba(23, 43, 54, .06);
-  --shadow-raised: 0 12px 32px rgba(23, 43, 54, .12);
-  --shadow-dialog: 0 24px 64px rgba(23, 43, 54, .2);
-  --focus-ring: var(--nocturnal);
+  --color-danger-surface: #FBEDEB;
+  --shadow-card: 0 1px 2px rgba(64, 76, 30, .06), 0 4px 14px rgba(64, 76, 30, .06);
+  --shadow-raised: 0 2px 4px rgba(64, 76, 30, .06), 0 14px 32px rgba(64, 76, 30, .12);
+  --shadow-dialog: 0 24px 64px rgba(64, 76, 30, .26);
+  --focus-ring: var(--soft-indigo);
 
   --font-body: "DM Sans", sans-serif;
   --font-heading: "Manrope", sans-serif;
@@ -38,25 +52,25 @@
   --space-4: 16px;
   --space-5: 24px;
   --space-6: 32px;
-  --radius-control: 6px;
-  --radius-card: 8px;
+  --radius-control: 10px;
+  --radius-card: 14px;
   --radius-pill: 999px;
   --motion-duration: 160ms;
-  --motion-easing: ease;
+  --motion-easing: cubic-bezier(.2, .7, .2, 1);
 
-  --navy: var(--oceanic-noir);
-  --blue: var(--nocturnal);
-  --blue-dark: var(--oceanic-noir);
-  --teal: var(--nocturnal);
+  --navy: var(--deep-olive);
+  --blue: var(--color-primary);
+  --blue-dark: var(--deep-olive);
+  --teal: var(--color-primary);
   --ink: var(--color-text);
   --muted: var(--color-text-muted);
   --line: var(--color-border);
   --surface: var(--color-surface);
   --green: var(--color-success);
-  --orange: var(--deep-saffron);
-  --violet: var(--mystic-mint);
-  --gold: var(--forsythia);
-  --cream: var(--arctic-powder);
+  --orange: var(--chartreuse);
+  --violet: var(--soft-indigo);
+  --gold: var(--lime);
+  --cream: var(--sage-gray);
   font-family: var(--font-body);
   color: var(--color-text);
   background: var(--color-background);
@@ -224,7 +238,7 @@ body {
 }
 
 .app-shell .modal-backdrop {
-  background: rgba(23, 43, 54, .5);
+  background: rgba(64, 76, 30, .5);
 }
 
 .app-shell .modal {
@@ -270,7 +284,7 @@ body {
 }
 
 .auth-layout .auth-aside {
-  background: rgba(18, 53, 110, .8);
+  background: rgba(64, 76, 30, .8);
   color: var(--color-text-inverse);
 }
 

@@ -17,6 +17,7 @@ import {
   Clock3,
   Copy,
   CheckCheck,
+  Check,
   CreditCard,
   Inbox,
   LayoutDashboard,
@@ -45,6 +46,15 @@ import { reportCriticalError } from "./lib/errorReporting";
 import { invokeWithRetry } from "./lib/functions";
 import { safeReturnPath } from "./lib/returnPath";
 import WeeklyActivity, { AnimatedNumber } from "./WeeklyActivity";
+import { EmptyState, Skeleton, StatusDot, useConfirm, useToast } from "./ui";
+
+const statusLabels = {
+  booked: "Νέα κράτηση",
+  pending: "Σε αναμονή",
+  confirmed: "Επιβεβαιωμένο",
+  completed: "Ολοκληρώθηκε",
+  cancelled: "Ακυρώθηκε",
+};
 
 const customerModule = () => import("./customer");
 const CustomerAppointmentsPage = lazy(() =>
@@ -85,6 +95,8 @@ function decodeVapidPublicKey(value) {
 const errorText = (error) =>
   error?.code === "23P01"
     ? "Η ώρα έχει ήδη κρατηθεί. Επιλέξτε άλλη διαθέσιμη ώρα."
+    : String(error?.code || "").startsWith("BK")
+      ? "Η επιλεγμένη ώρα δεν είναι διαθέσιμη. Ανανεώστε και επιλέξτε άλλη ώρα."
     : error?.code === "23505"
       ? "Η καταχώρηση υπάρχει ήδη. Ανανεώστε τη σελίδα και δοκιμάστε ξανά."
       : "Παρουσιάστηκε πρόβλημα. Ελέγξτε τη σύνδεσή σας και δοκιμάστε ξανά.";
@@ -457,13 +469,33 @@ function Dashboard({
   logout,
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem("bookeasy-sidebar-collapsed") === "true";
+    } catch {
+      return false;
+    }
+  });
+  const toggleCollapsed = () => {
+    setCollapsed((current) => {
+      try {
+        localStorage.setItem("bookeasy-sidebar-collapsed", String(!current));
+      } catch {
+        // The layout preference is optional.
+      }
+      return !current;
+    });
+  };
   const location = useLocation();
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [location.pathname]);
   const page =
     navItems.find(
       (item) => item[0] !== "/" && location.pathname === item[0],
     )?.[1] || "Επισκόπηση";
   const appointments = useData("appointments", business?.id, {
-    select: "*, service:services(name,duration_minutes), staff:staff(name)",
+    select: "*, service:services(name,duration_minutes,price), staff:staff(name)",
   });
   const hours = useData("working_hours", business?.id, {
     order: "day_of_week",
@@ -508,12 +540,13 @@ function Dashboard({
       </div>
     );
   return (
-    <div className="app-shell">
+    <div className={`app-shell${collapsed ? " is-collapsed" : ""}`}>
+      {sidebarOpen && <div className="sidebar-scrim" onClick={() => setSidebarOpen(false)} aria-hidden="true" />}
       <aside id="dashboard-sidebar" className={`sidebar ${sidebarOpen ? "open" : ""}`}>
         <div className="sidebar-top">
           <Link className="brand" to="/dashboard">
             <span className="brand-mark">B</span>
-            <span>
+            <span className="brand-text">
               book<span>easy</span>
             </span>
           </Link>
@@ -523,6 +556,15 @@ function Dashboard({
             onClick={() => setSidebarOpen(false)}
           >
             <X size={18} />
+          </button>
+          <button
+            className="icon-button sidebar-collapse desktop-only"
+            aria-label={collapsed ? "Επέκταση πλαϊνής μενού" : "Σύμπτυξη πλαϊνής μενού"}
+            aria-expanded={!collapsed}
+            aria-controls="dashboard-sidebar"
+            onClick={toggleCollapsed}
+          >
+            <ChevronLeft size={17} />
           </button>
         </div>
         <div className="workspace-switcher">
@@ -546,7 +588,7 @@ function Dashboard({
               onClick={() => setSidebarOpen(false)}
             >
               <Icon size={17} />
-              <span>{label}</span>
+              <span className="nav-label">{label}</span>
               {label === "Ραντεβού" && !appointments.loading && !appointments.error && <b>{appointments.data.length}</b>}
               {label === "Εξυπηρέτηση Πελατών" &&
                 support.data.some((item) => item.unread_for_business) && (
@@ -599,7 +641,7 @@ function Dashboard({
             <div className="avatar blue">{business.name.slice(0, 2)}</div>
           </div>
         </header>
-        <div className="content">
+        <div className="content" key={location.pathname}>
           <Routes>
             <Route
               index
@@ -644,6 +686,23 @@ function Dashboard({
           </Routes>
         </div>
       </main>
+      <nav className="tab-bar" aria-label="Κύρια πλοηγήση">
+        {[navItems[0], navItems[1], navItems[2], navItems[4]].map(([to, label, Icon]) => (
+          <NavLink
+            key={label}
+            to={to === "/" ? "/dashboard" : to}
+            end={to === "/"}
+            className={({ isActive }) => `tab-item${isActive ? " active" : ""}`}
+          >
+            <Icon size={20} />
+            <span>{label}</span>
+          </NavLink>
+        ))}
+        <button type="button" className="tab-item" aria-expanded={sidebarOpen} aria-controls="dashboard-sidebar" onClick={() => setSidebarOpen(true)}>
+          <Menu size={20} />
+          <span>Μενού</span>
+        </button>
+      </nav>
     </div>
   );
 }
@@ -668,7 +727,7 @@ function PageHeader({ eyebrow, title, subtitle, action }) {
         <h1>{title}</h1>
         <p>{subtitle}</p>
       </div>
-      {action}
+      {action && <div className="page-header-actions">{action}</div>}
     </div>
   );
 }
@@ -1004,6 +1063,8 @@ function Overview({ appointments, business, hours }) {
         />
       </div>
       <WeeklyActivity appointments={weekItems} weekStart={weekStart} loading={appointments.loading} />
+      <QuickActions business={business} />
+      <Insights appointments={appointments} />
       </>}
       <div className="dashboard-grid">
         <section className="panel schedule">
@@ -1047,7 +1108,7 @@ function Overview({ appointments, business, hours }) {
               .filter((day) => !day.staff_id)
               .slice(0, 5)
               .map((day) => (
-              <div key={day.name}>
+              <div key={day.id || day.day_of_week}>
                 <span>{dayNames[day.day_of_week]}</span>
                 <strong>
                   {day.is_closed
@@ -1094,19 +1155,153 @@ function Overview({ appointments, business, hours }) {
   );
 }
 
+function QuickActions({ business }) {
+  const actions = [
+    [`/b/${business.slug}`, Plus, "Νέο ραντεβού"],
+    ["/dashboard/services", Scissors, "Υπηρεσίες"],
+    ["/dashboard/staff", UserRound, "Ομάδα"],
+    ["/dashboard/profile", Clock3, "Ωράριο και προφίλ"],
+  ];
+  return (
+    <nav className="quick-actions" aria-label="Γρήγορες ενέργειες">
+      {actions.map(([to, Icon, label]) => (
+        <Link key={to} to={to} className="quick-action">
+          <Icon size={16} /> {label}
+        </Link>
+      ))}
+    </nav>
+  );
+}
+
+function relativeTime(value) {
+  const minutes = Math.round((Date.now() - new Date(value).getTime()) / 60000);
+  if (!Number.isFinite(minutes)) return "";
+  if (minutes < 1) return "Τώρα";
+  if (minutes < 60) return `${minutes} λεπτά πριν`;
+  if (minutes < 1440) return `${Math.round(minutes / 60)} ώρες πριν`;
+  return `${Math.round(minutes / 1440)} ημέρες πριν`;
+}
+
+// Every figure is derived from the loaded appointments; nothing here is stored or simulated.
+function Insights({ appointments }) {
+  if (appointments.loading) {
+    return (
+      <div className="insights-grid">
+        {[0, 1, 2].map((index) => <section className="panel" key={index}><Skeleton lines={4} /></section>)}
+      </div>
+    );
+  }
+  const items = appointments.data;
+  const now = new Date();
+  const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const monthItems = items.filter((item) => item.appointment_date?.startsWith(monthKey));
+  const monthActive = monthItems.filter((item) => item.status !== "cancelled");
+  const bookedValue = monthActive.reduce((sum, item) => sum + Number(item.service?.price || 0), 0);
+  const cancelRate = monthItems.length ? Math.round((monthItems.length - monthActive.length) / monthItems.length * 100) : 0;
+
+  const perCustomer = new Map();
+  items.filter((item) => item.status !== "cancelled" && item.customer_id).forEach((item) => {
+    perCustomer.set(item.customer_id, (perCustomer.get(item.customer_id) || 0) + 1);
+  });
+  const monthCustomers = new Set(monthActive.map((item) => item.customer_id).filter(Boolean));
+  const returning = [...monthCustomers].filter((id) => perCustomer.get(id) > 1).length;
+  const fresh = monthCustomers.size - returning;
+
+  const weekStart = new Date(now);
+  weekStart.setHours(0, 0, 0, 0);
+  weekStart.setDate(weekStart.getDate() - ((weekStart.getDay() + 6) % 7));
+  const staffCounts = new Map();
+  items.filter((item) => item.status !== "cancelled" && new Date(item.starts_at) >= weekStart).forEach((item) => {
+    const name = item.staff?.name || "Χωρίς ανάθεση";
+    staffCounts.set(name, (staffCounts.get(name) || 0) + 1);
+  });
+  const staffRows = [...staffCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
+  const staffMax = Math.max(1, ...staffRows.map(([, count]) => count));
+
+  const upcoming = items
+    .filter((item) => item.status !== "cancelled" && new Date(item.starts_at) > now)
+    .sort((a, b) => new Date(a.starts_at) - new Date(b.starts_at))
+    .slice(0, 5);
+  const recent = [...items]
+    .filter((item) => item.created_at)
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+    .slice(0, 5);
+
+  return (
+    <>
+      <div className="insights-grid">
+        <section className="panel insight">
+          <div className="panel-heading"><div><h2>Έσοδα κρατήσεων</h2><p>Τρέχων μήνας</p></div></div>
+          <strong className="insight-figure">{bookedValue.toLocaleString("el-GR", { style: "currency", currency: "EUR" })}</strong>
+          <p className="insight-note">Αξία ενεργών κρατήσεων βάσει τιμών υπηρεσιών. Δεν αποτυπώνει πληρωμές.</p>
+          <div className="insight-meta"><span>{monthActive.length} ενεργές κρατήσεις</span><span>{cancelRate}% ακυρώσεις</span></div>
+        </section>
+        <section className="panel insight">
+          <div className="panel-heading"><div><h2>Πελάτες μήνα</h2><p>Νέοι ή επαναλαμβανόμενοι</p></div></div>
+          <strong className="insight-figure">{monthCustomers.size}</strong>
+          <div className="split-bar" role="img" aria-label={`${fresh} νέοι, ${returning} παλιοί πελάτες`}>
+            <span style={{ flexGrow: fresh || (monthCustomers.size ? 0 : 1) }} />
+            <span className="is-returning" style={{ flexGrow: returning }} />
+          </div>
+          <div className="insight-meta"><span><i className="legend-dot" /> {fresh} νέοι</span><span><i className="legend-dot is-returning" /> {returning} παλιοί</span></div>
+        </section>
+        <section className="panel insight">
+          <div className="panel-heading"><div><h2>Δραστηριότητα προσωπικού</h2><p>Ραντεβού αυτήτην εβδομάδα</p></div></div>
+          {staffRows.length ? (
+            <ul className="bar-list">
+              {staffRows.map(([name, count]) => (
+                <li key={name}><span>{name}</span><div className="bar-track"><div className="bar-fill" style={{ width: `${count / staffMax * 100}%` }} /></div><b>{count}</b></li>
+              ))}
+            </ul>
+          ) : <EmptyState icon={Users} title="Χωρίς δραστηριότητα" />}
+        </section>
+      </div>
+      <div className="insights-grid two">
+        <section className="panel">
+          <div className="panel-heading"><div><h2>Επερχόμενα ραντεβού</h2><p>Τα επόμενα προγραμματισμένα</p></div><Link to="/dashboard/appointments" className="text-link">Όλα <ChevronRight size={15} /></Link></div>
+          {upcoming.length ? <div className="appointment-list">{upcoming.map((item) => <AppointmentRow key={item.id} appointment={item} />)}</div> : <EmptyState icon={CalendarDays} title="Δεν υπάρχουν επερχόμενα ραντεβού" />}
+        </section>
+        <section className="panel">
+          <div className="panel-heading"><div><h2>Πρόσφατη δραστηριότητα</h2><p>Τελευταίες κρατήσεις</p></div></div>
+          {recent.length ? (
+            <ul className="activity-feed">
+              {recent.map((item) => (
+                <li key={item.id}>
+                  <StatusDot tone={item.status === "cancelled" ? "off" : item.status === "confirmed" ? "ok" : "pending"} label={statusLabels[item.status] || item.status} />
+                  <div><strong>{item.customer_name || "Πελάτης"}</strong><span>{item.service?.name || "Υπηρεσία"} · {statusLabels[item.status] || item.status}</span></div>
+                  <time>{relativeTime(item.created_at)}</time>
+                </li>
+              ))}
+            </ul>
+          ) : <EmptyState icon={Inbox} title="Δεν υπάρχει πρόσφατη δραστηριότητα" />}
+        </section>
+      </div>
+    </>
+  );
+}
+
 function ProfessionalAI({ business, appointments, hours }) {
   const [message, setMessage] = useState("");
   const [reply, setReply] = useState("");
   const [loading, setLoading] = useState(false);
+  const [replyIsError, setReplyIsError] = useState(false);
+  const turns = useRef([]);
+  const inFlight = useRef(false);
+
+  useEffect(() => {
+    turns.current = [];
+  }, [business?.id]);
 
   const sendMessage = async (event) => {
     event?.preventDefault();
 
     const text = message.trim();
-    if (!text || loading) return;
+    if (!text || inFlight.current) return;
 
+    inFlight.current = true;
     setLoading(true);
     setReply("");
+    setReplyIsError(false);
 
     try {
       const data = await invokeWithRetry(
@@ -1115,15 +1310,26 @@ function ProfessionalAI({ business, appointments, hours }) {
           body: {
             message: text,
             business_id: business?.id,
+            history: turns.current.slice(-6),
           },
         },
         { feature: "professional-ai", operation: "answer-business-question", attempts: 1, timeoutMs: 28000 },
       );
-      setReply(data?.reply || "Δεν υπάρχει διαθέσιμη απάντηση.");
+      if (typeof data?.reply !== "string" || !data.reply.trim()) throw new Error("Empty AI reply");
+      turns.current = [...turns.current, { role: "user", content: text }, { role: "assistant", content: data.reply }].slice(-8);
+      setReply(data.reply);
       setMessage("");
-    } catch {
-      setReply("Υπήρξε πρόβλημα με τον AI βοηθό. Δοκιμάστε ξανά.");
+    } catch (requestError) {
+      const messages = {
+        ai_not_configured: "Ο AI βοηθός δεν έχει ρυθμιστεί ακόμη. Επικοινωνήστε με την υποστήριξη του BookEasy.",
+        rate_limited: "Έχετε στείλει πολλά αιτήματα. Δοκιμάστε ξανά αργότερα.",
+        ai_timeout: "Ο AI βοηθός άργησε να απαντήσει. Δοκιμάστε ξανά.",
+        unauthenticated: "Η σύνδεσή σας έληξε. Συνδεθείτε ξανά.",
+      };
+      setReplyIsError(true);
+      setReply(messages[requestError?.code] || "Ο AI βοηθός δεν είναι προσωρινά διαθέσιμος. Δοκιμάστε ξανά.");
     } finally {
+      inFlight.current = false;
       setLoading(false);
     }
   };
@@ -1145,7 +1351,7 @@ function ProfessionalAI({ business, appointments, hours }) {
       </div>
 
       {reply && (
-        <div className="professional-ai-reply">
+        <div className="professional-ai-reply" role={replyIsError ? "alert" : "status"}>
           <strong>AI Βοηθός</strong>
           <p>{reply}</p>
         </div>
@@ -1330,14 +1536,26 @@ function Calendar({ appointments }) {
 }
 function Appointments({ appointments }) {
   const [view, setView] = useState("today");
+  const toast = useToast();
+  const confirm = useConfirm();
   const update = async (id, status) => {
+    if (status === "cancelled" && !await confirm({
+      title: "Ακύρωση ραντεβού",
+      message: "Ο πελάτης θα ενημερωθεί για την ακύρωση. Η ενέργεια δεν αναιρείται.",
+      confirmLabel: "Ακύρωση ραντεβού",
+      cancelLabel: "Πίσω",
+      tone: "danger",
+    })) return;
     if (supabase) {
       const { error } = await supabase
         .from("appointments")
         .update({ status })
         .eq("id", id);
-      if (error) alert(errorText(error));
-      else appointments.reload();
+      if (error) toast(errorText(error), "error");
+      else {
+        toast("Η κατάσταση του ραντεβού ενημερώθηκε.", "success");
+        appointments.reload();
+      }
     }
   };
   const today = new Date();
@@ -1350,13 +1568,23 @@ function Appointments({ appointments }) {
   });
 
   const remove = async (id) => {
+    if (!await confirm({
+      title: "Διαγραφή ραντεβού",
+      message: "Το ραντεβού θα διαγραφεί οριστικά από το ιστορικό σας.",
+      confirmLabel: "Διαγραφή",
+      cancelLabel: "Πίσω",
+      tone: "danger",
+    })) return;
     if (supabase) {
       const { error } = await supabase
         .from("appointments")
         .delete()
         .eq("id", id);
-      if (error) alert(errorText(error));
-      else appointments.reload();
+      if (error) toast(errorText(error), "error");
+      else {
+        toast("Το ραντεβού διαγράφηκε.", "success");
+        appointments.reload();
+      }
     }
   };
   return (
@@ -1391,10 +1619,12 @@ function Appointments({ appointments }) {
               </tr>
             ) : appointments.error ? (
               <tr><td colSpan="6"><DataFailure store={appointments} /></td></tr>
+            ) : visibleAppointments.length === 0 ? (
+              <tr><td colSpan="6"><EmptyState icon={CalendarDays} title={view === "history" ? "Δεν υπάρχει ιστορικό ραντεβού" : "Δεν υπάρχουν ραντεβού"}>Οι νέες κρατήσεις θα εμφανίζονται εδώ μόλις γίνουν.</EmptyState></td></tr>
             ) : (
               visibleAppointments.map((item) => (
                 <tr key={item.id}>
-                  <td>
+                  <td data-label="Πελάτης">
                     <div className="table-person">
                       <div className="avatar pink">
                         {(item.customer_name || "").slice(0, 2)}
@@ -1402,33 +1632,35 @@ function Appointments({ appointments }) {
                       <strong>{item.customer_name}</strong>
                     </div>
                   </td>
-                  <td>{item.service?.name || "Υπηρεσία"}</td>
-                  <td>
+                  <td data-label="Υπηρεσία">{item.service?.name || "Υπηρεσία"}</td>
+                  <td data-label="Ημερομηνία">
                     {new Date(item.starts_at).toLocaleString("el-GR", {
                       dateStyle: "short",
                       timeStyle: "short",
                     })}
                   </td>
-                  <td>{item.staff?.name || "—"}</td>
-                  <td>
+                  <td data-label="Προσωπικό">{item.staff?.name || "—"}</td>
+                  <td data-label="Κατάσταση">
                     <span className={`status ${item.status}`}>
-                      {item.status}
+                      {statusLabels[item.status] || item.status}
                     </span>
                   </td>
-                  <td>
+                  <td data-label="Ενέργειες" className="row-actions">
                     <button
                       className="mini-action"
                       aria-label="Επιβεβαίωση ραντεβού"
+                      title="Επιβεβαίωση"
                       onClick={() => update(item.id, "confirmed")}
                     >
-                      ✓
+                      <Check size={15} />
                     </button>
                     <button
                       className="mini-action"
                       aria-label="Ολοκλήρωση ραντεβού"
+                      title="Ολοκλήρωση"
                       onClick={() => update(item.id, "completed")}
                     >
-                      ○
+                      <CheckCheck size={15} />
                     </button>
                     {!(["cancelled", "completed"].includes(item.status)) && (
                       <button
@@ -1522,10 +1754,12 @@ function Editor({ title, value, fields, onClose, onSave }) {
   );
 }
 function AIAssistant({ business, appointments, hours }) {
+  const toast = useToast();
   const openSupportEmail = () => {
     if (!BOOKEASY_SUPPORT_EMAIL) {
-      window.alert(
+      toast(
         "Το BookEasy support email δεν έχει ρυθμιστεί ακόμη. Ορίστε το VITE_BOOKEASY_SUPPORT_EMAIL στο env της εφαρμογής.",
+        "error",
       );
       return;
     }
@@ -2202,6 +2436,8 @@ function CustomerSupportCenter({ business }) {
 function Services({ business }) {
   const store = useData("services", business.id, { order: "name" });
   const [editing, setEditing] = useState(null);
+  const toast = useToast();
+  const confirm = useConfirm();
   const save = async (form) => {
     const payload = {
       business_id: business.id,
@@ -2215,16 +2451,27 @@ function Services({ business }) {
       ? supabase.from("services").update(payload).eq("id", form.id)
       : supabase.from("services").insert(payload);
     const { error } = await request;
-    if (error) alert(errorText(error));
+    if (error) toast(errorText(error), "error");
     else {
+      toast("Η υπηρεσία αποθηκεύτηκε.", "success");
       setEditing(null);
       store.reload();
     }
   };
   const remove = async (id) => {
+    if (!await confirm({
+      title: "Διαγραφή υπηρεσίας",
+      message: "Η υπηρεσία θα διαγραφεί οριστικά και δεν θα είναι διαθέσιμη για νέες κρατήσεις.",
+      confirmLabel: "Διαγραφή",
+      cancelLabel: "Πίσω",
+      tone: "danger",
+    })) return;
     const { error } = await supabase.from("services").delete().eq("id", id);
-    if (error) alert(errorText(error));
-    else store.reload();
+    if (error) toast(errorText(error), "error");
+    else {
+      toast("Η υπηρεσία διαγράφηκε.", "success");
+      store.reload();
+    }
   };
   return (
     <>
@@ -2305,6 +2552,8 @@ function Staff({ business }) {
   const store = useData("staff", business.id, { order: "name" });
   const [editing, setEditing] = useState(null);
   const [hoursFor, setHoursFor] = useState(null);
+  const toast = useToast();
+  const confirm = useConfirm();
   const save = async (form) => {
     const payload = {
       business_id: business.id,
@@ -2316,16 +2565,27 @@ function Staff({ business }) {
       ? supabase.from("staff").update(payload).eq("id", form.id)
       : supabase.from("staff").insert(payload);
     const { error } = await request;
-    if (error) alert(errorText(error));
+    if (error) toast(errorText(error), "error");
     else {
+      toast("Το μέλος της ομάδας αποθηκεύτηκε.", "success");
       setEditing(null);
       store.reload();
     }
   };
   const remove = async (id) => {
+    if (!await confirm({
+      title: "Διαγραφή μέλους ομάδας",
+      message: "Το μέλος και το ωράριό του θα διαγραφούν οριστικά.",
+      confirmLabel: "Διαγραφή",
+      cancelLabel: "Πίσω",
+      tone: "danger",
+    })) return;
     const { error } = await supabase.from("staff").delete().eq("id", id);
-    if (error) alert(errorText(error));
-    else store.reload();
+    if (error) toast(errorText(error), "error");
+    else {
+      toast("Το μέλος της ομάδας διαγράφηκε.", "success");
+      store.reload();
+    }
   };
   return (
     <>
@@ -2439,23 +2699,17 @@ function StaffHoursEditor({ business, staffMember, onClose }) {
   }, [business.id, staffMember.id]);
   const save = async (event) => {
     event.preventDefault();
-    const { error: deleteError } = await supabase
-      .from("working_hours")
-      .delete()
-      .eq("business_id", business.id)
-      .eq("staff_id", staffMember.id);
-    if (deleteError) {
-      setMessage(errorText(deleteError));
-      return;
-    }
-    const { error: insertError } = await supabase.from("working_hours").insert(
-      hours.map(({ id, name, ...hour }) => ({
-        ...hour,
-        business_id: business.id,
-        staff_id: staffMember.id,
+    const { error } = await supabase.rpc("replace_working_hours", {
+      p_business: business.id,
+      p_staff: staffMember.id,
+      p_hours: hours.map(({ day_of_week, start_time, end_time, is_closed }) => ({
+        day_of_week,
+        start_time,
+        end_time,
+        is_closed: Boolean(is_closed),
       })),
-    );
-    if (insertError) setMessage(errorText(insertError));
+    });
+    if (error) setMessage(errorText(error));
     else onClose();
   };
   return (
@@ -2703,9 +2957,14 @@ const performSave = async () => {
       setMessage("Συμπληρώστε έγκυρη ζώνη ώρας, όπως Europe/Athens.");
       return;
     }
-    const { error } = await supabase
-      .from("businesses")
-      .update({
+    const urls = photos
+      .split(",")
+      .map((url) => url.trim())
+      .filter(Boolean);
+    // One database transaction: a failure leaves the previously saved profile, hours and photos untouched.
+    const { error } = await supabase.rpc("save_business_profile", {
+      p_business: business.id,
+      p_profile: {
         name: form.name,
         slug: form.slug,
         description: form.description,
@@ -2716,82 +2975,27 @@ const performSave = async () => {
         logo_url: form.logo_url,
         cover_image_url: form.cover_image_url,
         primary_color: form.primary_color,
-      })
-      .eq("id", business.id);
+      },
+      p_contact: {
+        professional_email: professionalEmail,
+        email_is_public: contactSettings.email_is_public,
+        time_zone: contactSettings.time_zone,
+      },
+      p_hours: hours.map(({ day_of_week, start_time, end_time, is_closed }) => ({
+        day_of_week,
+        start_time,
+        end_time,
+        is_closed: Boolean(is_closed),
+      })),
+      p_urls: urls,
+    });
     if (error) {
+      reportCriticalError(error, {
+        feature: "business-profile",
+        operation: "save-business-profile",
+      });
       setMessage(errorText(error));
       return;
-    }
-    const { error: contactError } = await supabase
-      .from("business_contact_settings")
-      .upsert(
-        {
-          business_id: business.id,
-          professional_email: professionalEmail,
-          email_is_public: contactSettings.email_is_public,
-          time_zone: contactSettings.time_zone,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "business_id" },
-      );
-    if (contactError) {
-      reportCriticalError(contactError, {
-        feature: "business-profile",
-        operation: "save-contact-settings",
-      });
-      setMessage("Δεν ήταν δυνατή η αποθήκευση των στοιχείων επικοινωνίας.");
-      return;
-    }
-    const { error: hoursError } = await supabase
-      .from("working_hours")
-      .delete()
-      .eq("business_id", business.id)
-      .is("staff_id", null);
-    if (hoursError) {
-      setMessage(errorText(hoursError));
-      return;
-    }
-    if (hours.length) {
-      const { error: insertHoursError } = await supabase
-        .from("working_hours")
-        .insert(
-          hours.map(({ name, id, ...hour }) => ({
-            ...hour,
-            business_id: business.id,
-            staff_id: null,
-          })),
-        );
-      if (insertHoursError) {
-        setMessage(errorText(insertHoursError));
-        return;
-      }
-    }
-    const { error: mediaDeleteError } = await supabase
-      .from("business_media")
-      .delete()
-      .eq("business_id", business.id);
-    if (mediaDeleteError) {
-      setMessage(errorText(mediaDeleteError));
-      return;
-    }
-    const urls = photos
-      .split(",")
-      .map((url) => url.trim())
-      .filter(Boolean);
-    if (urls.length) {
-      const { error: mediaInsertError } = await supabase
-        .from("business_media")
-        .insert(
-          urls.map((url, sort_order) => ({
-            business_id: business.id,
-            url,
-            sort_order,
-          })),
-        );
-      if (mediaInsertError) {
-        setMessage(errorText(mediaInsertError));
-        return;
-      }
     }
     setBusiness(form);
     setMessage("Οι αλλαγές αποθηκεύτηκαν.");
