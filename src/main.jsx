@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client'
 import { App as CapacitorApp } from '@capacitor/app'
 import { BrowserRouter } from 'react-router-dom'
 import App from './App'
+import AmbientExperience from './AmbientExperience'
 import ErrorBoundary from './ErrorBoundary'
 import { reportCriticalError } from './lib/errorReporting'
 import './styles.css'
@@ -40,7 +41,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <BrowserRouter>
       <ErrorBoundary>
-        <App />
+        <AmbientExperience><App /></AmbientExperience>
       </ErrorBoundary>
     </BrowserRouter>
   </React.StrictMode>

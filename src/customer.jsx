@@ -23,15 +23,13 @@ import {
 } from "./lib/supabase";
 import { invokeWithRetry } from "./lib/functions";
 import { reportCriticalError } from "./lib/errorReporting";
+import { MotionControl } from "./AmbientExperience";
+import { safeReturnPath } from "./lib/returnPath";
 
 const errorText = (error) =>
   error?.code === "23P01"
     ? "Η ώρα έχει ήδη κρατηθεί. Επιλέξτε άλλη διαθέσιμη ώρα."
     : "Παρουσιάστηκε πρόβλημα. Ελέγξτε τη σύνδεσή σας και δοκιμάστε ξανά.";
-const safeReturnPath = (value, fallback = "/customer") => {
-  if (!value || !value.startsWith("/") || value.startsWith("//")) return fallback;
-  return value;
-};
 const readSessionValue = (key) => {
   try {
     return sessionStorage.getItem(key);
@@ -146,7 +144,7 @@ function CustomerNotice({ message, success = false }) {
     <div className={`notice ${success ? "success" : ""}`}>{message}</div>
   ) : null;
 }
-function CustomerHeader({ user, onLogout }) {
+function CustomerHeader({ user, onLogout, headerAction }) {
   return (
     <header className="public-header">
       <Link className="brand" to="/">
@@ -156,6 +154,8 @@ function CustomerHeader({ user, onLogout }) {
         </span>
       </Link>
       <nav className="customer-nav">
+        <MotionControl />
+        {headerAction}
         <Link to="/customer">Αναζήτηση</Link>
         {user ? (
           <>
@@ -178,14 +178,14 @@ function CustomerHeader({ user, onLogout }) {
     </header>
   );
 }
-function CustomerShell({ children }) {
+function CustomerShell({ children, headerAction }) {
   const { user } = useCustomerAuth();
   const logout = async () => {
     if (supabase) await supabase.auth.signOut();
   };
   return (
     <div className="customer-page">
-      <CustomerHeader user={user} onLogout={logout} />
+      <CustomerHeader user={user} onLogout={logout} headerAction={headerAction} />
       {children}
     </div>
   );
@@ -403,12 +403,12 @@ export function CustomerAuth({ mode }) {
   return (
     <div className="auth-layout">
       <div className="auth-aside">
-        <Link className="brand light" to="/">
+        <div className="auth-brand-row"><Link className="brand light" to="/">
           <span className="brand-mark">B</span>
           <span>
             book<span>easy</span>
           </span>
-        </Link>
+        </Link><MotionControl /></div>
         <div>
           <span className="eyebrow">Ο ΛΟΓΑΡΙΑΣΜΟΣ ΠΕΛΑΤΗ ΣΑΣ</span>
           <h1>
@@ -664,6 +664,8 @@ export function CustomerBooking({ dashboardMode = false, business: dashboardBusi
   const [date, setDate] = useState(() => businessToday("Europe/Athens"));
   const [time, setTime] = useState("");
   const [appointments, setAppointments] = useState([]);
+  const [availability, setAvailability] = useState({ key: "", status: "loading" });
+  const [availabilityRetry, setAvailabilityRetry] = useState(0);
   const [details, setDetails] = useState({ name: "", phone: "", email: "" });
   const [bookingError, setBookingError] = useState("");
   const [success, setSuccess] = useState(null);
@@ -681,6 +683,8 @@ export function CustomerBooking({ dashboardMode = false, business: dashboardBusi
   const supportMessageRequest = useRef(null);
   const supportPolling = useRef(false);
   const [bookingSubmitting, setBookingSubmitting] = useState(false);
+  const bookingSubmission = useRef(false);
+  const bookingRequestKeys = useRef(new Map());
   const bookingPath = `/b/${encodeURIComponent(slug)}`;
   const fromDashboard =
     new URLSearchParams(window.location.search).get("from") === "dashboard";
@@ -942,13 +946,17 @@ export function CustomerBooking({ dashboardMode = false, business: dashboardBusi
     staffId === "any"
       ? eligibleStaff[0]
       : eligibleStaff.find((person) => person.id === staffId);
+  const availabilityKey = JSON.stringify([data?.business?.id, selectedStaff?.id, date]);
+  const availabilityReady = availability.key === availabilityKey && availability.status === "ready";
   useEffect(() => {
     let active = true;
     async function loadAppointments() {
       if (!data?.business?.id || !selectedStaff) {
         setAppointments([]);
+        setAvailability({ key: availabilityKey, status: "unavailable" });
         return;
       }
+      setAvailability({ key: availabilityKey, status: "loading" });
       try {
         const { data: rows, error: requestError } = await supabase.rpc(
           "get_booked_intervals",
@@ -962,6 +970,7 @@ export function CustomerBooking({ dashboardMode = false, business: dashboardBusi
         if (active) {
           setBookingError("");
           setAppointments(rows || []);
+          setAvailability({ key: availabilityKey, status: "ready" });
         }
       } catch (requestError) {
         reportCriticalError(requestError, {
@@ -971,6 +980,7 @@ export function CustomerBooking({ dashboardMode = false, business: dashboardBusi
         if (active) {
           setBookingError("Δεν ήταν δυνατή η φόρτωση της διαθεσιμότητας. Δοκιμάστε ξανά.");
           setAppointments([]);
+          setAvailability({ key: availabilityKey, status: "error" });
         }
       }
     }
@@ -978,14 +988,14 @@ export function CustomerBooking({ dashboardMode = false, business: dashboardBusi
     return () => {
       active = false;
     };
-  }, [data?.business?.id, date, selectedStaff?.id]);
+  }, [availabilityKey, availabilityRetry]);
   const slots = useMemo(
     () =>
-      getSlots(date, service, selectedStaff, data?.hours || [], appointments, data?.timeZone || "Europe/Athens"),
-    [date, service, selectedStaff, data?.hours, appointments, data?.timeZone],
+      availabilityReady ? getSlots(date, service, selectedStaff, data?.hours || [], appointments, data?.timeZone || "Europe/Athens") : [],
+    [availabilityReady, date, service, selectedStaff, data?.hours, appointments, data?.timeZone],
   );
   const confirm = async () => {
-    if (bookingSubmitting) return;
+    if (bookingSubmission.current) return;
     setBookingError("");
     if (!user) {
       navigate(`/customer-login?returnTo=${encodeURIComponent(bookingPath)}`);
@@ -995,6 +1005,10 @@ export function CustomerBooking({ dashboardMode = false, business: dashboardBusi
       setBookingError(
         "Το Supabase δεν είναι ρυθμισμένο. Η κράτηση δεν καταχωρήθηκε.",
       );
+      return;
+    }
+    if (!availabilityReady || !slots.includes(time)) {
+      setBookingError("Η διαθεσιμότητα δεν είναι επιβεβαιωμένη. Δοκιμάστε ξανά και επιλέξτε ώρα.");
       return;
     }
     if (
@@ -1034,7 +1048,8 @@ export function CustomerBooking({ dashboardMode = false, business: dashboardBusi
     } catch {
       // In-memory idempotency remains available when browser storage is disabled.
     }
-    requestKey ||= crypto.randomUUID();
+    requestKey ||= bookingRequestKeys.current.get(requestStorageKey) || crypto.randomUUID();
+    bookingRequestKeys.current.set(requestStorageKey, requestKey);
     try {
       sessionStorage.setItem(requestStorageKey, requestKey);
     } catch {
@@ -1046,6 +1061,7 @@ export function CustomerBooking({ dashboardMode = false, business: dashboardBusi
     const [slotHour, slotMinute] = time.split(":").map(Number);
     const endMinuteOfDay = slotHour * 60 + slotMinute + service.duration_minutes;
     const endTime = `${String(Math.floor(endMinuteOfDay / 60)).padStart(2, "0")}:${String(endMinuteOfDay % 60).padStart(2, "0")}:00`;
+    bookingSubmission.current = true;
     setBookingSubmitting(true);
     try {
       const { error: profileError } = await supabase
@@ -1083,7 +1099,7 @@ export function CustomerBooking({ dashboardMode = false, business: dashboardBusi
         .select("id")
         .single();
 
-      if (insertError?.code === "23505") {
+      if (["23505", "23P01"].includes(insertError?.code)) {
         const existing = await supabase
           .from("appointments")
           .select("id")
@@ -1105,6 +1121,7 @@ export function CustomerBooking({ dashboardMode = false, business: dashboardBusi
         time,
         price: service.price,
       });
+      bookingRequestKeys.current.delete(requestStorageKey);
       try {
         sessionStorage.removeItem(requestStorageKey);
       } catch {
@@ -1116,7 +1133,12 @@ export function CustomerBooking({ dashboardMode = false, business: dashboardBusi
         operation: "create-appointment",
       });
       setBookingError(errorText(requestError));
+      if (requestError?.code === "23P01") {
+        setTime("");
+        setAvailability({ key: availabilityKey, status: "error" });
+      }
     } finally {
+      bookingSubmission.current = false;
       setBookingSubmitting(false);
     }
   };
@@ -1283,16 +1305,30 @@ export function CustomerBooking({ dashboardMode = false, business: dashboardBusi
                       {slot}
                     </button>
                   ))}
-                  {!slots.length && (
+                  {availabilityReady && !slots.length && (
                     <small>
                       Δεν υπάρχουν διαθέσιμες ώρες για αυτή την επιλογή.
                     </small>
                   )}
                 </div>
+                {availability.key !== availabilityKey || availability.status === "loading" ? (
+                  <p role="status">Έλεγχος διαθεσιμότητας...</p>
+                ) : availability.status === "error" ? (
+                  <div role="alert">
+                    <p>Δεν ήταν δυνατός ο έλεγχος διαθεσιμότητας. Δοκιμάστε ξανά.</p>
+                    <button type="button" className="outline-button" onClick={() => setAvailabilityRetry((value) => value + 1)}>
+                      Επανάληψη
+                    </button>
+                  </div>
+                ) : availability.status === "unavailable" ? (
+                  <p>Δεν βρέθηκε διαθέσιμος επαγγελματίας για αυτή την υπηρεσία.</p>
+                ) : null}
               </div>
               <div className="customer-details">
                 <span className="field-label">Τα στοιχεία σας</span>
+                <label htmlFor="booking-customer-name">Ονοματεπώνυμο</label>
                 <input
+                  id="booking-customer-name"
                   placeholder="Ονοματεπώνυμο"
                   value={details.name}
                   autoComplete="name"
@@ -1302,7 +1338,9 @@ export function CustomerBooking({ dashboardMode = false, business: dashboardBusi
                     setDetails({ ...details, name: event.target.value })
                   }
                 />
+                <label htmlFor="booking-customer-phone">Τηλέφωνο</label>
                 <input
+                  id="booking-customer-phone"
                   placeholder="Τηλέφωνο"
                   type="tel"
                   value={details.phone}
@@ -1314,7 +1352,9 @@ export function CustomerBooking({ dashboardMode = false, business: dashboardBusi
                     setDetails({ ...details, phone: event.target.value })
                   }
                 />
+                <label htmlFor="booking-customer-email">Email</label>
                 <input
+                  id="booking-customer-email"
                   placeholder="Email"
                   type="email"
                   value={details.email}
@@ -1344,7 +1384,7 @@ export function CustomerBooking({ dashboardMode = false, business: dashboardBusi
                 <strong>{service?.price || 0}€</strong>
               </div>
               {user ? (
-                <button className="primary-button full" onClick={confirm} disabled={bookingSubmitting}>
+                <button className="primary-button full" onClick={confirm} disabled={bookingSubmitting || !availabilityReady || !slots.includes(time)}>
                   {bookingSubmitting ? "Καταχώρηση..." : "Επιβεβαίωση ραντεβού"} <ChevronRight size={17} />
                 </button>
               ) : (
@@ -1371,17 +1411,17 @@ export function CustomerBooking({ dashboardMode = false, business: dashboardBusi
   );
 
   return (
-    <CustomerShell>
-      {content}
-
+    <CustomerShell headerAction={
       <button
         type="button"
         className="ai-chat-button"
         onClick={() => setChatOpen((open) => !open)}
-        aria-label="Άνοιγμα εξυπηρέτησης πελατών"
+        aria-label={chatOpen ? "Κλείσιμο εξυπηρέτησης πελατών" : "Άνοιγμα εξυπηρέτησης πελατών"}
       >
         <MessageCircle size={23} />
       </button>
+    }>
+      {content}
 
       {chatOpen && (
         <div className="ai-chat-window">
@@ -1428,20 +1468,26 @@ export function CustomerBooking({ dashboardMode = false, business: dashboardBusi
           <form className="ai-chat-compose" onSubmit={sendChatMessage}>
             {chatMode === "human" && !supportSession && (
               <div className="support-contact-fields">
+                <label htmlFor="support-customer-name">Ονοματεπώνυμο</label>
                 <input
+                  id="support-customer-name"
                   value={details.name}
                   onChange={(event) => setDetails({ ...details, name: event.target.value })}
                   placeholder="Ονοματεπώνυμο"
                   autoComplete="name"
                 />
+                <label htmlFor="support-customer-email">Email</label>
                 <input
+                  id="support-customer-email"
                   type="email"
                   value={details.email}
                   onChange={(event) => setDetails({ ...details, email: event.target.value })}
                   placeholder="Email (προαιρετικό αν δώσετε τηλέφωνο)"
                   autoComplete="email"
                 />
+                <label htmlFor="support-customer-phone">Τηλέφωνο</label>
                 <input
+                  id="support-customer-phone"
                   type="tel"
                   value={details.phone}
                   onChange={(event) => setDetails({ ...details, phone: event.target.value })}
@@ -1452,6 +1498,7 @@ export function CustomerBooking({ dashboardMode = false, business: dashboardBusi
             )}
             <div className="ai-chat-input">
               <input
+                aria-label="Μήνυμα εξυπηρέτησης"
                 value={chatMessage}
                 onChange={(event) => setChatMessage(event.target.value)}
                 placeholder={chatMode === "ai" ? "Ρωτήστε για υπηρεσίες, ώρες ή διαθεσιμότητα..." : "Γράψτε το μήνυμά σας..."}

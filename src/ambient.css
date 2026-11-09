@@ -1,0 +1,240 @@
+#root {
+  isolation: isolate;
+}
+
+.ambient-layer {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(145deg, #F1F6F4, #D9E8E3 55%, #F1F6F4);
+}
+
+.ambient-layer canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.ambient-layer.is-reduced canvas {
+  display: none;
+}
+
+.experience-content .customer-page,
+.experience-content .public-page,
+.experience-content .app-shell .main-content,
+.experience-content .app-shell .content,
+.experience-content .auth-layout .auth-form-wrap {
+  background: transparent;
+}
+
+.experience-content .customer-page .customer-hero {
+  background: rgba(241, 246, 244, .58);
+}
+
+.experience-content :is(.booking-card, .stat-card, .business-card, .service-card, .staff-card, .customer-appointment) {
+  background: rgba(255, 255, 255, .94);
+  box-shadow: 0 8px 26px rgba(23, 43, 54, .08), 0 1px 2px rgba(23, 43, 54, .06);
+  backdrop-filter: blur(12px);
+}
+
+.motion-control {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid #C4D9D3;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, .9);
+  color: #114C5A;
+  cursor: pointer;
+}
+
+.motion-control:hover {
+  background: #D9E8E3;
+}
+
+.motion-control:focus-visible {
+  outline: 3px solid #114C5A;
+  outline-offset: 3px;
+}
+
+.motion-control:disabled {
+  opacity: .7;
+  cursor: default;
+}
+
+.auth-brand-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.customer-page .public-header .ai-chat-button {
+  position: static;
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  border-radius: 6px;
+  box-shadow: none;
+}
+
+.booking-card .customer-details label {
+  margin: 0;
+}
+
+.support-contact-fields label {
+  color: var(--color-text);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.weekly-activity {
+  margin: 0 0 20px;
+  padding: 20px 24px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .94);
+  box-shadow: var(--shadow-card);
+}
+
+.stat-card .stat-skeleton {
+  display: block;
+  width: 52px;
+  height: 28px;
+  margin: 6px 0 4px;
+  border-radius: 4px;
+  background: var(--mystic-mint);
+}
+
+.stat-card strong > span {
+  font: inherit;
+  color: inherit;
+}
+
+.weekly-activity-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.weekly-activity-header h2 {
+  margin: 0 0 5px;
+  font-size: 16px;
+}
+
+.weekly-activity-header p,
+.weekly-activity-header > span {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+
+.weekly-activity-chart {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.weekly-activity-day {
+  display: grid;
+  grid-template-rows: 18px 78px 20px;
+  justify-items: center;
+  gap: 4px;
+  color: var(--color-text-muted);
+  font-size: 11px;
+}
+
+.weekly-activity-count {
+  color: var(--color-text);
+  font-weight: 700;
+}
+
+.weekly-activity-track {
+  display: flex;
+  align-items: end;
+  width: min(100%, 28px);
+  height: 78px;
+  border-radius: 5px;
+  background: var(--arctic-powder);
+  overflow: hidden;
+}
+
+.weekly-activity-bar {
+  width: 100%;
+  border-radius: 5px 5px 0 0;
+  background: var(--nocturnal);
+  transform-origin: bottom;
+  animation: weekly-bar-enter 700ms ease-out both;
+}
+
+.weekly-activity-loading {
+  display: grid;
+  min-height: 120px;
+  place-items: center;
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+
+@keyframes weekly-bar-enter {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
+}
+
+.experience-content[data-reduced-motion="true"] .weekly-activity-bar {
+  animation: none;
+}
+
+.experience-content[data-reduced-motion="true"] {
+  --motion-duration: 0ms;
+}
+
+.experience-content[data-reduced-motion="true"] :is(.loader, .sidebar, .toggle i) {
+  animation: none;
+  transition: none;
+}
+
+@media (max-width: 800px) {
+  .app-shell .sidebar {
+    visibility: hidden;
+  }
+
+  .app-shell .sidebar.open {
+    visibility: visible;
+  }
+
+  .auth-layout .auth-aside > .auth-brand-row {
+    margin: 0;
+  }
+
+  .customer-page .public-header {
+    height: auto;
+    min-height: 72px;
+    gap: 8px;
+  }
+
+  .customer-page .customer-nav {
+    justify-content: flex-end;
+    flex-wrap: wrap;
+  }
+
+  .experience-content :is(.booking-card, .stat-card, .business-card, .service-card, .staff-card, .customer-appointment) {
+    backdrop-filter: none;
+    background: rgba(255, 255, 255, .97);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ambient-layer canvas {
+    display: none;
+  }
+
+  .weekly-activity-bar {
+    animation: none;
+  }
+}

@@ -43,6 +43,9 @@ import {
 import ErrorBoundary from "./ErrorBoundary";
 import { reportCriticalError } from "./lib/errorReporting";
 import { invokeWithRetry } from "./lib/functions";
+import { safeReturnPath } from "./lib/returnPath";
+import { MotionControl } from "./AmbientExperience";
+import WeeklyActivity, { AnimatedNumber } from "./WeeklyActivity";
 
 const customerModule = () => import("./customer");
 const CustomerAppointmentsPage = lazy(() =>
@@ -230,6 +233,14 @@ function Notice({ message, success = false }) {
     <div className={`notice ${success ? "success" : ""}`}>{message}</div>
   ) : null;
 }
+function DataFailure({ store }) {
+  return (
+    <div role="alert">
+      <Notice message={store.error} />
+      <button type="button" className="outline-button" onClick={store.reload}>Επανάληψη</button>
+    </div>
+  );
+}
 function Protected({ children }) {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
@@ -250,9 +261,11 @@ function CustomerAuthRedirect({ mode }) {
     const returnTo = new URLSearchParams(window.location.search).get(
       "returnTo",
     );
-    if (returnTo) {
+    if (returnTo !== null) {
       try {
-        sessionStorage.setItem("bookeasy-return-to", returnTo);
+        const safePath = safeReturnPath(returnTo, null);
+        if (safePath) sessionStorage.setItem("bookeasy-return-to", safePath);
+        else sessionStorage.removeItem("bookeasy-return-to");
       } catch {
         // The login form also carries returnTo in its URL.
       }
@@ -271,7 +284,7 @@ function CustomerAuthRedirect({ mode }) {
       } catch {
         // No persisted redirect to clean up.
       }
-      navigate(returnTo, { replace: true });
+      navigate(safeReturnPath(returnTo), { replace: true });
     }
   }, [auth.user, navigate]);
   return <CustomerAuth mode={mode} />;
@@ -373,12 +386,12 @@ function HomePage() {
   return (
     <div className="auth-layout">
       <div className="auth-aside">
-        <Link className="brand light" to="/">
+        <div className="auth-brand-row"><Link className="brand light" to="/">
           <span className="brand-mark">B</span>
           <span>
             book<span>easy</span>
           </span>
-        </Link>
+        </Link><MotionControl /></div>
         <div>
           <span className="eyebrow">BOOKEASY</span>
           <h1>Η Νο1 εφαρμογή κρατήσεων</h1>
@@ -497,7 +510,7 @@ function Dashboard({
     );
   return (
     <div className="app-shell">
-      <aside className={`sidebar ${sidebarOpen ? "open" : ""}`}>
+      <aside id="dashboard-sidebar" className={`sidebar ${sidebarOpen ? "open" : ""}`}>
         <div className="sidebar-top">
           <Link className="brand" to="/dashboard">
             <span className="brand-mark">B</span>
@@ -507,6 +520,7 @@ function Dashboard({
           </Link>
           <button
             className="icon-button mobile-only"
+            aria-label="Κλείσιμο μενού"
             onClick={() => setSidebarOpen(false)}
           >
             <X size={18} />
@@ -534,7 +548,7 @@ function Dashboard({
             >
               <Icon size={17} />
               <span>{label}</span>
-              {label === "Ραντεβού" && <b>{appointments.data.length}</b>}
+              {label === "Ραντεβού" && !appointments.loading && !appointments.error && <b>{appointments.data.length}</b>}
               {label === "Εξυπηρέτηση Πελατών" &&
                 support.data.some((item) => item.unread_for_business) && (
                   <b>
@@ -563,6 +577,9 @@ function Dashboard({
         <header className="topbar">
           <button
             className="icon-button mobile-only"
+            aria-label="Άνοιγμα μενού"
+            aria-controls="dashboard-sidebar"
+            aria-expanded={sidebarOpen}
             onClick={() => setSidebarOpen(true)}
           >
             <Menu size={20} />
@@ -573,6 +590,7 @@ function Dashboard({
             <strong>{page}</strong>
           </div>
           <div className="top-actions">
+            <MotionControl />
             <div className="connection-dot">
               <i />{" "}
               Συνδεδεμένο
@@ -880,7 +898,7 @@ function ProfessionalNotificationsBell({ business, user }) {
     </div>
   );
 }
-function StatCard({ icon: Icon, label, value, trend, tone }) {
+function StatCard({ icon: Icon, label, value, trend, tone, loading }) {
   return (
     <article className="stat-card">
       <div className={`stat-icon ${tone}`}>
@@ -888,8 +906,8 @@ function StatCard({ icon: Icon, label, value, trend, tone }) {
       </div>
       <div>
         <span>{label}</span>
-        <strong>{value}</strong>
-        <small className="trend">↗ {trend}</small>
+        {loading ? <span className="stat-skeleton" role="status" aria-label="Φόρτωση" /> : <AnimatedNumber value={value} />}
+        <small className="trend">{trend}</small>
       </div>
     </article>
   );
@@ -914,10 +932,10 @@ function Overview({ appointments, business, hours }) {
     return appointmentDate >= weekStart && appointmentDate < weekEnd;
   });
   const customerCount = new Set(
-    appointments.data.map((appointment) => appointment.customer_id),
+    appointments.data.map((appointment) => appointment.customer_id).filter(Boolean),
   ).size;
   const serviceCount = new Set(
-    appointments.data.map((appointment) => appointment.service_id),
+    appointments.data.map((appointment) => appointment.service_id).filter(Boolean),
   ).size;
   const [copied, setCopied] = useState(false);
   const publicUrl = `${window.location.origin}/b/${business.slug}`;
@@ -952,25 +970,29 @@ function Overview({ appointments, business, hours }) {
           </>
         }
       />
+      {appointments.error && !appointments.loading ? <DataFailure store={appointments} /> : <>
       <div className="stats-grid">
         <StatCard
           icon={CalendarDays}
           label="Σημερινά ραντεβού"
-          value={items.length}
+          value={todayItems.length}
+          loading={appointments.loading}
           trend="Ενημερωμένα από τη βάση"
           tone="blue"
         />
         <StatCard
           icon={Users}
-          label="Ενεργοί πελάτες"
+          label="Πελάτες με ραντεβού"
           value={customerCount}
+          loading={appointments.loading}
           trend="Με ραντεβού"
           tone="green"
         />
         <StatCard
           icon={Scissors}
-          label="Υπηρεσίες"
+          label="Υπηρεσίες σε ραντεβού"
           value={serviceCount}
+          loading={appointments.loading}
           trend="Σε ραντεβού"
           tone="orange"
         />
@@ -978,10 +1000,13 @@ function Overview({ appointments, business, hours }) {
           icon={Clock3}
           label="Ραντεβού εβδομάδας"
           value={weekItems.length}
+          loading={appointments.loading}
           trend="Συνολικές κρατήσεις"
           tone="violet"
         />
       </div>
+      <WeeklyActivity appointments={weekItems} weekStart={weekStart} loading={appointments.loading} />
+      </>}
       <div className="dashboard-grid">
         <section className="panel schedule">
           <div className="panel-heading">
@@ -990,7 +1015,7 @@ function Overview({ appointments, business, hours }) {
               <p>
                 {appointments.loading
                   ? "Φόρτωση..."
-                  : `${items.length} ραντεβού για σήμερα`}
+                  : appointments.error ? "Το πρόγραμμα δεν είναι διαθέσιμο." : `${todayItems.length} ραντεβού για σήμερα`}
               </p>
             </div>
             <Link to="/dashboard/calendar" className="text-link">
@@ -999,7 +1024,7 @@ function Overview({ appointments, business, hours }) {
           </div>
           {appointments.loading ? (
             <Loading />
-          ) : (
+          ) : appointments.error ? null : (
             <div className="appointment-list">
               {items.map((appointment) => (
                 <AppointmentRow
@@ -1018,16 +1043,7 @@ function Overview({ appointments, business, hours }) {
             </div>
             <Settings size={18} className="muted" />
           </div>
-          <div className="available-banner">
-            <div className="check-circle">✓</div>
-            <div>
-              <strong>Είστε διαθέσιμοι</strong>
-              <span>Δέχεστε νέα ραντεβού</span>
-            </div>
-            <span className="toggle on">
-              <i />
-            </span>
-          </div>
+          {hours.loading ? <Loading /> : hours.error ? <DataFailure store={hours} /> : <>
           <div className="hours-list">
             {hours.data
               .filter((day) => !day.staff_id)
@@ -1043,9 +1059,10 @@ function Overview({ appointments, business, hours }) {
               </div>
             ))}
           </div>
-          <Link to="/dashboard/settings" className="outline-button">
+          <Link to="/dashboard/profile" className="outline-button">
             Επεξεργασία ωραρίου <ChevronRight size={15} />
           </Link>
+          </>}
         </section>
       </div>
       <section className="link-banner">
@@ -1243,7 +1260,7 @@ function Calendar({ appointments }) {
         subtitle="Δείτε και διαχειριστείτε όλα τα ραντεβού σας."
       />
       <div className="calendar-toolbar">
-        <button className="icon-button" onClick={() => shiftWeek(-1)}>
+        <button className="icon-button" aria-label="Προηγούμενη εβδομάδα" onClick={() => shiftWeek(-1)}>
           <ChevronLeft size={18} />
         </button>
         <strong>
@@ -1251,14 +1268,14 @@ function Calendar({ appointments }) {
             ? "Αυτή η εβδομάδα"
             : `${weekDays[0].toLocaleDateString("el-GR", { day: "numeric", month: "short" })} – ${weekDays[6].toLocaleDateString("el-GR", { day: "numeric", month: "short" })}`}
         </strong>
-        <button className="icon-button" onClick={() => shiftWeek(1)}>
+        <button className="icon-button" aria-label="Επόμενη εβδομάδα" onClick={() => shiftWeek(1)}>
           <ChevronRight size={18} />
         </button>
         <button className="outline-button today" onClick={resetWeek}>
           Σήμερα
         </button>
       </div>
-      <section className="panel calendar-panel">
+      {appointments.loading ? <Loading /> : appointments.error ? <DataFailure store={appointments} /> : <section className="panel calendar-panel">
         <div className="week-grid">
           {weekDays.map((day) => (
               <div
@@ -1309,7 +1326,7 @@ function Calendar({ appointments }) {
               );
             })}
         </div>
-      </section>
+      </section>}
     </>
   );
 }
@@ -1374,6 +1391,8 @@ function Appointments({ appointments }) {
                   <Loading />
                 </td>
               </tr>
+            ) : appointments.error ? (
+              <tr><td colSpan="6"><DataFailure store={appointments} /></td></tr>
             ) : (
               visibleAppointments.map((item) => (
                 <tr key={item.id}>
@@ -1401,12 +1420,14 @@ function Appointments({ appointments }) {
                   <td>
                     <button
                       className="mini-action"
+                      aria-label="Επιβεβαίωση ραντεβού"
                       onClick={() => update(item.id, "confirmed")}
                     >
                       ✓
                     </button>
                     <button
                       className="mini-action"
+                      aria-label="Ολοκλήρωση ραντεβού"
                       onClick={() => update(item.id, "completed")}
                     >
                       ○
@@ -1423,6 +1444,7 @@ function Appointments({ appointments }) {
                     )}
                     <button
                       className="mini-action danger"
+                      aria-label="Διαγραφή ραντεβού"
                       onClick={() => remove(item.id)}
                     >
                       <Trash2 size={14} />
@@ -2230,6 +2252,8 @@ function Services({ business }) {
       />
       {store.loading ? (
         <Loading />
+      ) : store.error ? (
+        <DataFailure store={store} />
       ) : (
         <div className="service-grid">
           {store.data.map((service) => (
@@ -2323,6 +2347,8 @@ function Staff({ business }) {
       />
       {store.loading ? (
         <Loading />
+      ) : store.error ? (
+        <DataFailure store={store} />
       ) : (
         <div className="staff-grid">
           {store.data.map((person) => (
@@ -3038,6 +3064,8 @@ function Customers({ business }) {
       />
       {appointments.loading ? (
         <Loading />
+      ) : appointments.error ? (
+        <DataFailure store={appointments} />
       ) : (
         <div className="customer-grid">
           {customers.map((item) => (
@@ -3151,12 +3179,12 @@ function AuthPage({ mode, customer = false }) {
   return (
     <div className="auth-layout">
       <div className="auth-aside">
-        <Link className="brand light" to="/">
+        <div className="auth-brand-row"><Link className="brand light" to="/">
           <span className="brand-mark">B</span>
           <span>
             book<span>easy</span>
           </span>
-        </Link>
+        </Link><MotionControl /></div>
         <div>
           <span className="eyebrow">Η ΠΛΑΤΦΟΡΜΑ ΓΙΑ ΤΟ ΕΠΟΜΕΝΟ ΡΑΝΤΕΒΟΥ</span>
           <h1>

@@ -1,0 +1,371 @@
+:root {
+  color-scheme: light;
+  --arctic-powder: #F1F6F4;
+  --mystic-mint: #D9E8E3;
+  --forsythia: #FFC801;
+  --deep-saffron: #FF9932;
+  --nocturnal: #114C5A;
+  --oceanic-noir: #172B36;
+
+  --color-background: var(--arctic-powder);
+  --color-surface: #FFFFFF;
+  --color-surface-muted: var(--mystic-mint);
+  --color-text: var(--oceanic-noir);
+  --color-text-muted: #526B70;
+  --color-text-inverse: #FFFFFF;
+  --color-border: #C4D9D3;
+  --color-border-strong: #8FB0A9;
+  --color-primary: var(--nocturnal);
+  --color-primary-hover: var(--oceanic-noir);
+  --color-accent: var(--forsythia);
+  --color-accent-warm: var(--deep-saffron);
+  --color-success: #216451;
+  --color-success-surface: #E5F3EC;
+  --color-warning: #744700;
+  --color-warning-surface: #FFF4CF;
+  --color-danger: #A2372C;
+  --color-danger-surface: #FFF0ED;
+  --shadow-card: 0 4px 18px rgba(23, 43, 54, .06);
+  --shadow-raised: 0 12px 32px rgba(23, 43, 54, .12);
+  --shadow-dialog: 0 24px 64px rgba(23, 43, 54, .2);
+  --focus-ring: var(--nocturnal);
+
+  --font-body: "DM Sans", sans-serif;
+  --font-heading: "Manrope", sans-serif;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --radius-control: 6px;
+  --radius-card: 8px;
+  --radius-pill: 999px;
+  --motion-duration: 160ms;
+  --motion-easing: ease;
+
+  --navy: var(--oceanic-noir);
+  --blue: var(--nocturnal);
+  --blue-dark: var(--oceanic-noir);
+  --teal: var(--nocturnal);
+  --ink: var(--color-text);
+  --muted: var(--color-text-muted);
+  --line: var(--color-border);
+  --surface: var(--color-surface);
+  --green: var(--color-success);
+  --orange: var(--deep-saffron);
+  --violet: var(--mystic-mint);
+  --gold: var(--forsythia);
+  --cream: var(--arctic-powder);
+  font-family: var(--font-body);
+  color: var(--color-text);
+  background: var(--color-background);
+}
+
+body {
+  background: var(--color-background);
+  color: var(--color-text);
+}
+
+:is(.app-shell, .customer-page, .public-page, .auth-layout, .error-fallback) {
+  color: var(--color-text);
+  font-family: var(--font-body);
+}
+
+:is(.app-shell, .customer-page, .public-page, .auth-layout) :is(h1, h2, h3, h4) {
+  font-family: var(--font-heading);
+  letter-spacing: 0;
+}
+
+.app-shell :is(.main-content, .content),
+.customer-page,
+.public-page,
+.auth-layout .auth-form-wrap {
+  background: var(--color-background);
+}
+
+.app-shell :is(.sidebar, .topbar),
+.customer-page .public-header,
+.public-page .public-header {
+  background: var(--color-surface);
+  color: var(--color-text);
+  border-color: var(--color-border);
+}
+
+.app-shell .sidebar {
+  box-shadow: var(--shadow-card);
+}
+
+:is(.app-shell, .customer-page, .public-page, .auth-layout) .brand-mark {
+  background: var(--color-primary);
+  color: var(--color-text-inverse);
+  border-radius: var(--radius-control);
+}
+
+.app-shell :is(.workspace-switcher, .user-row),
+.app-shell .public-link {
+  border-color: var(--color-border);
+}
+
+.app-shell .nav-item {
+  border-radius: var(--radius-control);
+  color: var(--color-text-muted);
+  gap: var(--space-3);
+  transition: background-color var(--motion-duration) var(--motion-easing), color var(--motion-duration) var(--motion-easing);
+}
+
+.app-shell .nav-item:is(:hover, .active) {
+  background: var(--color-surface-muted);
+  color: var(--color-primary);
+}
+
+.app-shell .nav-item b {
+  background: var(--color-surface);
+  color: var(--color-primary);
+}
+
+:is(.app-shell, .customer-page, .public-page, .auth-layout) :is(.primary-button, .outline-button, .mini-action, .icon-button) {
+  border-radius: var(--radius-control);
+  transition: background-color var(--motion-duration) var(--motion-easing), border-color var(--motion-duration) var(--motion-easing), color var(--motion-duration) var(--motion-easing), box-shadow var(--motion-duration) var(--motion-easing);
+}
+
+:is(.app-shell, .customer-page, .public-page, .auth-layout) .primary-button {
+  background: var(--color-primary);
+  border: 1px solid var(--color-primary);
+  color: var(--color-text-inverse);
+  box-shadow: none;
+}
+
+:is(.app-shell, .customer-page, .public-page, .auth-layout) .primary-button:hover {
+  background: var(--color-primary-hover);
+  border-color: var(--color-primary-hover);
+  color: var(--color-text-inverse);
+}
+
+:is(.app-shell, .customer-page, .public-page, .auth-layout) :is(.outline-button, .mini-action) {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+}
+
+:is(.app-shell, .customer-page, .public-page, .auth-layout) :is(.outline-button, .mini-action, .icon-button):hover {
+  background: var(--color-background);
+  border-color: var(--color-border-strong);
+  color: var(--color-primary);
+}
+
+:is(.app-shell, .customer-page, .public-page, .auth-layout) :is(button, input, select, textarea):disabled {
+  opacity: .6;
+  cursor: not-allowed;
+}
+
+:is(.app-shell, .customer-page, .public-page, .auth-layout) :is(input:not([type="checkbox"]):not([type="radio"]):not([type="color"]), select, textarea) {
+  background-color: var(--color-surface);
+  border-color: var(--color-border);
+  border-radius: var(--radius-control);
+  color: var(--color-text);
+  transition: border-color var(--motion-duration) var(--motion-easing), box-shadow var(--motion-duration) var(--motion-easing);
+}
+
+:is(.app-shell, .customer-page, .public-page, .auth-layout) :is(input, select, textarea):focus-visible,
+:is(.app-shell, .customer-page, .public-page, .auth-layout) :is(button, a, [tabindex]):focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 3px;
+  box-shadow: none;
+}
+
+:is(.app-shell, .customer-page, .public-page, .auth-layout) :is(input, textarea)::placeholder {
+  color: var(--color-text-muted);
+  opacity: 1;
+}
+
+:is(.app-shell, .customer-page, .public-page, .auth-layout) :is(.panel, .stat-card, .customer-card, .service-card, .staff-card, .business-card, .booking-card, .customer-appointment, .customer-profile-panel, .form-panel) {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+  border-radius: var(--radius-card);
+  color: var(--color-text);
+  box-shadow: var(--shadow-card);
+}
+
+:is(.app-shell, .customer-page, .public-page) :is(.business-card, .service-card, .staff-card) {
+  transition: border-color var(--motion-duration) var(--motion-easing), box-shadow var(--motion-duration) var(--motion-easing);
+}
+
+:is(.app-shell, .customer-page, .public-page) :is(.business-card, .service-card, .staff-card):hover {
+  border-color: var(--color-border-strong);
+  box-shadow: var(--shadow-raised);
+}
+
+:is(.app-shell, .customer-page, .public-page) :is(.status, .support-status, .subscription-plan) {
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-muted);
+  color: var(--color-primary);
+}
+
+:is(.app-shell, .customer-page, .public-page) :is(.status.confirmed, .status.completed, .status-completed, .notice.success) {
+  background: var(--color-success-surface);
+  color: var(--color-success);
+}
+
+:is(.app-shell, .customer-page, .public-page) .status.pending {
+  background: var(--color-warning-surface);
+  color: var(--color-warning);
+}
+
+:is(.app-shell, .customer-page, .public-page) :is(.status.cancelled, .notice.error) {
+  background: var(--color-danger-surface);
+  color: var(--color-danger);
+}
+
+:is(.app-shell, .customer-page, .public-page) .notice {
+  background: var(--color-background);
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+
+.app-shell .modal-backdrop {
+  background: rgba(23, 43, 54, .5);
+}
+
+.app-shell .modal {
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  padding: var(--space-5);
+  box-shadow: var(--shadow-dialog);
+}
+
+.app-shell .table-panel :is(th, td) {
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+
+.app-shell .table-panel th {
+  background: var(--color-background);
+  color: var(--color-text-muted);
+}
+
+.app-shell :is(.available-banner, .link-banner, .calendar-event) {
+  background: var(--color-background);
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+
+.app-shell :is(.stat-icon, .service-swatch, .workspace-logo),
+.customer-page :is(.business-card-logo, .date-tile) {
+  background: var(--color-surface-muted);
+  color: var(--color-primary);
+}
+
+.app-shell .stat-icon.orange {
+  background: var(--color-warning-surface);
+  color: var(--color-warning);
+  box-shadow: inset 0 -2px var(--color-accent-warm);
+}
+
+.app-shell :is(.eyebrow, .nav-caption),
+.customer-page .eyebrow {
+  color: var(--color-primary);
+}
+
+.auth-layout .auth-aside {
+  background: var(--color-primary);
+  color: var(--color-text-inverse);
+}
+
+.auth-layout .auth-aside :is(h1, .brand.light) {
+  color: var(--color-text-inverse);
+}
+
+.auth-layout .auth-aside :is(p, small) {
+  color: var(--mystic-mint);
+}
+
+.auth-layout .auth-aside :is(.eyebrow, h1 em, .brand.light > span:last-child > span) {
+  color: var(--forsythia);
+}
+
+.auth-layout .auth-aside :is(a, button):focus-visible {
+  outline-color: var(--forsythia);
+}
+
+.auth-layout .auth-aside .brand-mark {
+  background: var(--forsythia);
+  color: var(--oceanic-noir);
+}
+
+.auth-layout .auth-form {
+  color: var(--color-text);
+}
+
+.customer-page .customer-hero {
+  background: linear-gradient(180deg, var(--mystic-mint), var(--arctic-powder));
+}
+
+.auth-layout .auth-aside h1,
+.customer-page .customer-hero h1 {
+  font-size: 42px;
+}
+
+.customer-page :is(.customer-search, .booking-url) {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+  box-shadow: var(--shadow-card);
+}
+
+.customer-page .customer-search input {
+  background: transparent;
+  border: 0;
+}
+
+.customer-page .customer-booking-layout :is(.public-booking-cta, .booking-card .primary-button) {
+  background: var(--business-accent, var(--color-primary));
+  border-color: var(--business-accent, var(--color-primary));
+  color: #FFFFFF;
+}
+
+.customer-page .customer-booking-layout :is(.public-booking-cta, .booking-card .primary-button):hover {
+  background: var(--business-accent, var(--color-primary));
+  border-color: var(--business-accent, var(--color-primary));
+  filter: brightness(.9);
+}
+
+.customer-page .customer-booking-layout .slot-grid button.selected {
+  background: color-mix(in srgb, var(--business-accent, var(--color-primary)) 12%, white);
+  border-color: var(--business-accent, var(--color-primary));
+  color: var(--business-accent, var(--color-primary));
+}
+
+@media (max-width: 800px) {
+  .app-shell .sidebar {
+    box-shadow: var(--shadow-raised);
+  }
+
+  .app-shell .content,
+  .customer-page .customer-content {
+    overflow-wrap: anywhere;
+  }
+}
+
+@media (max-width: 520px) {
+  .auth-layout .auth-aside h1,
+  .customer-page .customer-hero h1 {
+    font-size: 32px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-duration: 0ms;
+  }
+
+  .loading-state .loader {
+    animation: none;
+  }
+
+  .app-shell .sidebar,
+  .app-shell .toggle i {
+    transition: none;
+  }
+}

@@ -196,7 +196,7 @@ as $$
 $$;
 
 -- Helper function: generate appointment snapshot payload
-create or replace function public.generate_appointment_payload(p_appointment record)
+create or replace function public.generate_appointment_payload(p_appointment public.appointments)
 returns jsonb
 language sql
 stable
