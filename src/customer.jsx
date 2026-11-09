@@ -23,7 +23,6 @@ import {
 } from "./lib/supabase";
 import { invokeWithRetry } from "./lib/functions";
 import { reportCriticalError } from "./lib/errorReporting";
-import { MotionControl } from "./AmbientExperience";
 import { safeReturnPath } from "./lib/returnPath";
 
 const errorText = (error) =>
@@ -154,7 +153,6 @@ function CustomerHeader({ user, onLogout, headerAction }) {
         </span>
       </Link>
       <nav className="customer-nav">
-        <MotionControl />
         {headerAction}
         <Link to="/customer">Αναζήτηση</Link>
         {user ? (
@@ -408,7 +406,7 @@ export function CustomerAuth({ mode }) {
           <span>
             book<span>easy</span>
           </span>
-        </Link><MotionControl /></div>
+        </Link></div>
         <div>
           <span className="eyebrow">Ο ΛΟΓΑΡΙΑΣΜΟΣ ΠΕΛΑΤΗ ΣΑΣ</span>
           <h1>

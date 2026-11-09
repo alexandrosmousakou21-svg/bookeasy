@@ -7,9 +7,9 @@ const vertexShader = `
   void main() {
     vUv = uv;
     vec3 displaced = position;
-    float wave = sin(position.x * 2.2 + uTime * 0.19) * cos(position.y * 1.8 - uTime * 0.14);
-    wave += sin(position.x * 3.8 - position.y * 2.3 + uTime * 0.11) * 0.35;
-    displaced.z += wave * 0.11;
+    float wave = sin(position.x * 2.2 + uTime * 0.32) * cos(position.y * 1.8 - uTime * 0.24);
+    wave += sin(position.x * 3.8 - position.y * 2.3 + uTime * 0.18) * 0.35;
+    displaced.z += wave * 0.16;
     vHeight = wave;
     gl_Position = projectionMatrix * modelViewMatrix * vec4(displaced, 1.0);
   }
@@ -20,17 +20,27 @@ const fragmentShader = `
   uniform vec2 uPointer;
   varying vec2 vUv;
   varying float vHeight;
+  float ribbon(vec2 uv, float offset, float phase, float width) {
+    float curve = offset + 0.12 * sin(uv.x * 4.2 + phase) + 0.07 * sin(uv.x * 8.0 - phase * 0.7);
+    float distanceToCurve = abs(uv.y - curve);
+    return exp(-distanceToCurve * width);
+  }
   void main() {
-    vec2 uv = vUv + uPointer * 0.012;
-    float wave = sin(uv.x * 8.0 + uv.y * 5.0 + sin(uv.y * 4.0 - uTime * 0.12) * 1.7 + uTime * 0.16);
-    float wave2 = cos(uv.x * 5.0 - uv.y * 8.0 + uTime * 0.11);
-    float light = smoothstep(0.58, 1.0, wave * 0.5 + 0.5) * 0.22;
-    vec3 powder = vec3(0.945, 0.965, 0.957);
-    vec3 mint = vec3(0.851, 0.910, 0.890);
-    vec3 ocean = vec3(0.067, 0.298, 0.353);
-    vec3 color = mix(powder, mint, clamp(0.52 + wave * 0.27 + wave2 * 0.14 + vHeight * 0.09, 0.0, 0.92));
-    color = mix(color, ocean, 0.035 + light * 0.15);
-    color += light * vec3(0.12, 0.14, 0.12);
+    vec2 uv = vUv + uPointer * 0.025;
+    float wave = sin(uv.x * 9.0 + uv.y * 6.0 + sin(uv.y * 5.0 - uTime * 0.19) * 1.9 + uTime * 0.24);
+    float wave2 = cos(uv.x * 5.0 - uv.y * 9.0 + uTime * 0.18);
+    float light = pow(max(0.0, wave * 0.5 + 0.5), 7.0);
+    vec3 powder = vec3(0.965, 0.973, 0.984);
+    vec3 blue = vec3(0.53, 0.70, 0.89);
+    vec3 deep = vec3(0.07, 0.21, 0.43);
+    vec3 color = mix(powder, blue, clamp(0.42 + wave * 0.30 + wave2 * 0.18 + vHeight * 0.08, 0.0, 0.9));
+    color = mix(color, deep, 0.035 + max(0.0, -wave2) * 0.045);
+    color += light * vec3(0.14, 0.15, 0.16);
+    float flow = ribbon(uv, 0.30, uTime * 0.18, 58.0);
+    flow += ribbon(uv, 0.49, uTime * 0.14 + 1.8, 84.0) * 0.75;
+    flow += ribbon(uv, 0.72, uTime * 0.12 + 3.5, 110.0) * 0.5;
+    color += flow * vec3(0.09, 0.14, 0.21);
+    color -= ribbon(uv, 0.27, uTime * 0.18, 26.0) * vec3(0.025, 0.035, 0.045);
     float particles = 0.0;
     for (int index = 0; index < PARTICLE_COUNT; index++) {
       float seed = float(index);
@@ -38,7 +48,7 @@ const fragmentShader = `
                          0.5 + 0.40 * cos(seed * 1.7 + uTime * (0.02 + seed * 0.003)));
       particles += 1.0 - smoothstep(0.002, 0.006, length(uv - center));
     }
-    color += particles * vec3(0.045, 0.038, 0.012);
+    color += particles * vec3(0.13, 0.14, 0.15);
     gl_FragColor = vec4(color, 1.0);
   }
 `;
@@ -69,6 +79,43 @@ export function startAmbientScene(canvas) {
     uniforms: { uTime: { value: 0 }, uPointer: { value: new THREE.Vector2() } },
   });
   scene.add(new THREE.Mesh(geometry, material));
+  const pointerTarget = new THREE.Vector2();
+  const floating = new THREE.Group();
+  const floatingGeometries = [];
+  const floatingMaterials = [];
+  const strandCount = lowPower ? 2 : 3;
+  for (let strand = 0; strand < strandCount; strand += 1) {
+    const points = [];
+    for (let step = 0; step <= 64; step += 1) {
+      const position = step / 64;
+      points.push(new THREE.Vector3(
+        position * 2.8 - 1.4,
+        Math.sin(position * 5 + strand * 1.4) * .17 + (strand - 1) * .4,
+        .18 + Math.cos(position * 4 + strand) * .1,
+      ));
+    }
+    const strandGeometry = new THREE.BufferGeometry().setFromPoints(points);
+    const strandMaterial = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: .36, depthWrite: false });
+    floatingGeometries.push(strandGeometry);
+    floatingMaterials.push(strandMaterial);
+    floating.add(new THREE.Line(strandGeometry, strandMaterial));
+  }
+  const particlePositions = [];
+  const particleCount = lowPower ? 18 : 36;
+  for (let index = 0; index < particleCount; index += 1) {
+    particlePositions.push(
+      Math.sin(index * 9.7) * 1.05,
+      Math.cos(index * 4.3) * .95,
+      .22 + (index % 5) * .05,
+    );
+  }
+  const particleGeometry = new THREE.BufferGeometry();
+  particleGeometry.setAttribute("position", new THREE.Float32BufferAttribute(particlePositions, 3));
+  const particleMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: lowPower ? 2 : 3, sizeAttenuation: false, transparent: true, opacity: .6, depthWrite: false });
+  floatingGeometries.push(particleGeometry);
+  floatingMaterials.push(particleMaterial);
+  floating.add(new THREE.Points(particleGeometry, particleMaterial));
+  scene.add(floating);
 
   let frame = 0;
   let timer = 0;
@@ -91,7 +138,7 @@ export function startAmbientScene(canvas) {
     renderer.setSize(window.innerWidth, window.innerHeight, false);
   };
   const pointer = (event) => {
-    material.uniforms.uPointer.value.set(event.clientX / window.innerWidth - 0.5, event.clientY / window.innerHeight - 0.5);
+    pointerTarget.set(event.clientX / window.innerWidth - 0.5, event.clientY / window.innerHeight - 0.5);
   };
   const render = (time) => {
     frame = 0;
@@ -106,6 +153,10 @@ export function startAmbientScene(canvas) {
       resize();
     }
     material.uniforms.uTime.value = elapsed;
+    material.uniforms.uPointer.value.lerp(pointerTarget, 0.035);
+    floating.rotation.z = Math.sin(elapsed * .08) * .04;
+    floating.position.x = material.uniforms.uPointer.value.x * .06;
+    floating.position.y = Math.sin(elapsed * .12) * .025 - material.uniforms.uPointer.value.y * .04;
     try {
       renderer.render(scene, camera);
       timer = window.setTimeout(() => {
@@ -161,6 +212,8 @@ export function startAmbientScene(canvas) {
     canvas.removeEventListener("webglcontextrestored", contextRestored);
     geometry.dispose();
     material.dispose();
+    floatingGeometries.forEach((item) => item.dispose());
+    floatingMaterials.forEach((item) => item.dispose());
     renderer.dispose();
     canvas.style.visibility = "";
   };

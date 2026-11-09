@@ -1,20 +1,20 @@
 :root {
   color-scheme: light;
-  --arctic-powder: #F1F6F4;
-  --mystic-mint: #D9E8E3;
-  --forsythia: #FFC801;
-  --deep-saffron: #FF9932;
-  --nocturnal: #114C5A;
-  --oceanic-noir: #172B36;
+  --arctic-powder: #f6f8fb;
+  --mystic-mint: #e5efff;
+  --forsythia: #8ab8ff;
+  --deep-saffron: #ed8d32;
+  --nocturnal: #1664d9;
+  --oceanic-noir: #172033;
 
   --color-background: var(--arctic-powder);
   --color-surface: #FFFFFF;
   --color-surface-muted: var(--mystic-mint);
   --color-text: var(--oceanic-noir);
-  --color-text-muted: #526B70;
+  --color-text-muted: #526174;
   --color-text-inverse: #FFFFFF;
-  --color-border: #C4D9D3;
-  --color-border-strong: #8FB0A9;
+  --color-border: #d5e2f4;
+  --color-border-strong: #a9bdd9;
   --color-primary: var(--nocturnal);
   --color-primary-hover: var(--oceanic-noir);
   --color-accent: var(--forsythia);
@@ -270,7 +270,7 @@ body {
 }
 
 .auth-layout .auth-aside {
-  background: var(--color-primary);
+  background: rgba(18, 53, 110, .8);
   color: var(--color-text-inverse);
 }
 

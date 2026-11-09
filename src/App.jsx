@@ -44,7 +44,6 @@ import ErrorBoundary from "./ErrorBoundary";
 import { reportCriticalError } from "./lib/errorReporting";
 import { invokeWithRetry } from "./lib/functions";
 import { safeReturnPath } from "./lib/returnPath";
-import { MotionControl } from "./AmbientExperience";
 import WeeklyActivity, { AnimatedNumber } from "./WeeklyActivity";
 
 const customerModule = () => import("./customer");
@@ -384,17 +383,17 @@ function App() {
 }
 function HomePage() {
   return (
-    <div className="auth-layout">
+    <div className="auth-layout home-layout">
       <div className="auth-aside">
         <div className="auth-brand-row"><Link className="brand light" to="/">
           <span className="brand-mark">B</span>
           <span>
             book<span>easy</span>
           </span>
-        </Link><MotionControl /></div>
+        </Link></div>
         <div>
           <span className="eyebrow">BOOKEASY</span>
-          <h1>Η Νο1 εφαρμογή κρατήσεων</h1>
+          <h1>BookEasy</h1>
           <p>
             Κλείσε εύκολα το επόμενο ραντεβού σου ή διαχειρίσου την επιχείρησή
             σου μέσα από μία απλή και σύγχρονη πλατφόρμα.
@@ -590,7 +589,6 @@ function Dashboard({
             <strong>{page}</strong>
           </div>
           <div className="top-actions">
-            <MotionControl />
             <div className="connection-dot">
               <i />{" "}
               Συνδεδεμένο
@@ -1908,6 +1906,7 @@ function SubscriptionSettings({ business }) {
           <button className="primary-button" disabled={working} onClick={startCheckout}>
             {working ? "Μετάβαση στο Checkout..." : canResumeCheckout ? "Συνέχεια στο Checkout" : "Συνέχεια στο Stripe Checkout"}
           </button>
+          <small>Επιλέξτε διαθέσιμο τρόπο πληρωμής στο ασφαλές Stripe Checkout.</small>
         </div>
       )}
       <small className="subscription-footnote">Η ακύρωση ισχύει στο τέλος της πληρωμένης περιόδου. Δεν εκδίδεται αυτόματη επιστροφή χρημάτων.</small>
@@ -3184,7 +3183,7 @@ function AuthPage({ mode, customer = false }) {
           <span>
             book<span>easy</span>
           </span>
-        </Link><MotionControl /></div>
+        </Link></div>
         <div>
           <span className="eyebrow">Η ΠΛΑΤΦΟΡΜΑ ΓΙΑ ΤΟ ΕΠΟΜΕΝΟ ΡΑΝΤΕΒΟΥ</span>
           <h1>
