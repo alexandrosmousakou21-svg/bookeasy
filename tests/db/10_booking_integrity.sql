@@ -85,6 +85,16 @@ select set_config('request.jwt.claim.sub', 'a0000000-0000-4000-8000-000000000004
 select pg_temp.book('10:00', 30, (current_setting('test.day'))::date, 'd0000000-0000-4000-8000-00000000000a', 'c0000000-0000-4000-8000-00000000000a', 'a0000000-0000-4000-8000-000000000004') \gexec
 
 reset role;
+do $$ begin
+  if not exists (
+    select 1 from public.appointments
+    where customer_id = 'a0000000-0000-4000-8000-000000000003'
+      and start_time = '10:00'
+      and status = 'cancelled'
+  ) then
+    raise exception 'cancellation must preserve appointment history';
+  end if;
+end $$;
 
 -- Closed day and staff-specific hours override business hours.
 update public.working_hours set is_closed = true
@@ -124,7 +134,7 @@ insert into public.business_media (business_id, url, sort_order) values ('b00000
 set role authenticated;
 select set_config('request.jwt.claim.sub', 'a0000000-0000-4000-8000-000000000001', false);
 select pg_temp.expect_state($q$select public.save_business_profile('b0000000-0000-4000-8000-00000000000a',
-  '{"name":"A2","slug":"b","primary_color":"#1664d9"}'::jsonb,
+  '{"name":"A2","slug":"b","primary_color":"#A78BFA"}'::jsonb,
   '{"professional_email":"a@example.test","time_zone":"Europe/Athens"}'::jsonb,
   '[]'::jsonb, array['https://example.test/new.jpg'])$q$, '23505');
 reset role;
@@ -144,7 +154,7 @@ end $$;
 set role authenticated;
 select set_config('request.jwt.claim.sub', 'a0000000-0000-4000-8000-000000000001', false);
 select public.save_business_profile('b0000000-0000-4000-8000-00000000000a',
-  '{"name":"A2","slug":"a2","primary_color":"#1664d9"}'::jsonb,
+  '{"name":"A2","slug":"a2","primary_color":"#A78BFA"}'::jsonb,
   '{"professional_email":"a@example.test","time_zone":"Europe/Athens"}'::jsonb,
   '[{"day_of_week":1,"start_time":"09:00","end_time":"17:00","is_closed":false}]'::jsonb,
   array['https://example.test/new.jpg']);

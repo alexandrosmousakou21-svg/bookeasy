@@ -18,7 +18,7 @@
 }
 
 .ambient-layer[data-scene="home"] {
-  background: #262E10;
+  background: #090A10;
 }
 
 .ambient-layer.is-reduced canvas {
@@ -347,4 +347,39 @@
   .experience-content :is(.business-card, .service-card, .staff-card):hover {
     transform: none;
   }
+}
+
+/* BOOKEASY AMBIENT LAYER — VISIBLE BUT SUBTLE */
+.ambient-layer {
+  z-index: 0 !important;
+  background: #F5F1E8 !important;
+  opacity: .72;
+}
+.ambient-layer[data-scene="home"] {
+  background: #F5F1E8 !important;
+}
+.ambient-layer canvas {
+  opacity: .58;
+}
+.experience-content {
+  position: relative;
+  z-index: 1;
+}
+
+
+/* BOOKEASY AMBIENT LAYER — VISIBLE BUT SUBTLE */
+.ambient-layer {
+  z-index: 0 !important;
+  background: #F5F1E8 !important;
+  opacity: .72;
+}
+.ambient-layer[data-scene="home"] {
+  background: #F5F1E8 !important;
+}
+.ambient-layer canvas {
+  opacity: .58;
+}
+.experience-content {
+  position: relative;
+  z-index: 1;
 }

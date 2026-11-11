@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import Stripe from "https://esm.sh/stripe@17.7.0?target=deno";
+import { createCardSubscriptionCheckout } from "../_shared/stripeCheckout.ts";
 
 const priceByPlan = new Map([
   ["basic", "price_1UJHObQfYqQ6BGmE9CqD61td"],
@@ -208,18 +209,14 @@ Deno.serve(async (req) => {
         throw new Error("Configured subscription price is not active monthly billing");
       }
       session = await stripe.checkout.sessions.create(
-        {
-          mode: "subscription",
-          ...(currentSubscription?.stripe_customer_id
-            ? { customer: currentSubscription.stripe_customer_id }
-            : { customer_email: user.email || undefined }),
-          client_reference_id: user.id,
-          line_items: [{ price: priceId, quantity: 1 }],
-          subscription_data: { metadata },
-          success_url: new URL("/dashboard/plan?payment=success", appOrigin).toString(),
-          cancel_url: new URL("/dashboard/plan?payment=cancelled", appOrigin).toString(),
+        createCardSubscriptionCheckout({
+          appOrigin,
+          customerId: currentSubscription?.stripe_customer_id,
+          customerEmail: user.email,
           metadata,
-        },
+          priceId,
+          userId: user.id,
+        }),
         { idempotencyKey: `bookeasy-checkout-${ownedBusiness.id}-${requestId}` },
       );
     } catch (stripeError) {

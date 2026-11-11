@@ -4,9 +4,13 @@
   --sage-gray: #E4E5E3;
   --chartreuse: #9DB644;
   --lime: #A2C430;
-  --soft-indigo: #5765C2;
-  --slate-blue: #678FB4;
-  --slate-blue-light: #6E9AC8;
+  --lilac-primary: #A78BFA;
+  --lilac-light: #C4B5FD;
+  --lilac-deep: #7C3AED;
+  --lilac-glow: rgba(167, 139, 250, .22);
+  --soft-indigo: var(--lilac-primary);
+  --slate-blue: var(--lilac-deep);
+  --slate-blue-light: var(--lilac-light);
   --deep-olive: #404C1E;
   --secondary-olive: #4C5339;
 
@@ -30,8 +34,8 @@
   --color-primary-hover: var(--secondary-olive);
   --color-accent: var(--lime);
   --color-accent-warm: var(--chartreuse);
-  --color-ai: var(--soft-indigo);
-  --color-ai-surface: color-mix(in srgb, var(--soft-indigo) 10%, white);
+  --color-ai: var(--lilac-primary);
+  --color-ai-surface: color-mix(in srgb, var(--lilac-primary) 10%, white);
   /* Status colors are functional, not brand: olive for success, a single red for errors. */
   --color-success: var(--deep-olive);
   --color-success-surface: color-mix(in srgb, var(--lime) 22%, white);
@@ -42,7 +46,7 @@
   --shadow-card: 0 1px 2px rgba(64, 76, 30, .06), 0 4px 14px rgba(64, 76, 30, .06);
   --shadow-raised: 0 2px 4px rgba(64, 76, 30, .06), 0 14px 32px rgba(64, 76, 30, .12);
   --shadow-dialog: 0 24px 64px rgba(64, 76, 30, .26);
-  --focus-ring: var(--soft-indigo);
+  --focus-ring: var(--lilac-primary);
 
   --font-body: "DM Sans", sans-serif;
   --font-heading: "Manrope", sans-serif;
@@ -59,8 +63,8 @@
   --motion-easing: cubic-bezier(.2, .7, .2, 1);
 
   --navy: var(--deep-olive);
-  --blue: var(--color-primary);
-  --blue-dark: var(--deep-olive);
+  --blue: var(--lilac-primary);
+  --blue-dark: var(--lilac-deep);
   --teal: var(--color-primary);
   --ink: var(--color-text);
   --muted: var(--color-text-muted);
@@ -68,7 +72,7 @@
   --surface: var(--color-surface);
   --green: var(--color-success);
   --orange: var(--chartreuse);
-  --violet: var(--soft-indigo);
+  --violet: var(--lilac-primary);
   --gold: var(--lime);
   --cream: var(--sage-gray);
   font-family: var(--font-body);

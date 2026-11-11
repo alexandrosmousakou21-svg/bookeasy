@@ -9,7 +9,7 @@ create table public.businesses (
   description text,
   logo_url text,
   cover_image_url text,
-  primary_color text not null default '#1664d9',
+  primary_color text not null default '#A78BFA',
   address text,
   phone text,
   subscription_plan text not null default 'basic' check (subscription_plan in ('basic', 'plus')),

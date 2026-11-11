@@ -5,3 +5,4 @@ node_modules/
 dist/
 .vercel
 dist/supabase/.temp/
+bookeasy.zip

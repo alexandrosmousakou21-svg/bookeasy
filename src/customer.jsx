@@ -27,14 +27,13 @@ import {
 import { invokeWithRetry } from "./lib/functions";
 import { reportCriticalError } from "./lib/errorReporting";
 import { safeReturnPath } from "./lib/returnPath";
+import { ensureCustomerProfile, registrationAuthError, validateRegistration } from "./lib/registration";
+import { supabaseErrorMessage } from "./lib/errorMessages";
+import { matchesBusinessQuery } from "./lib/directorySearch";
+import AppointmentRescheduleDialog from "./AppointmentRescheduleDialog";
 import { EmptyState, Skeleton, useConfirm } from "./ui";
 
-const errorText = (error) =>
-  error?.code === "23P01"
-    ? "Η ώρα έχει ήδη κρατηθεί. Επιλέξτε άλλη διαθέσιμη ώρα."
-    : String(error?.code || "").startsWith("BK")
-      ? "Η επιλεγμένη ώρα δεν είναι διαθέσιμη. Ανανεώστε και επιλέξτε άλλη ώρα."
-    : "Παρουσιάστηκε πρόβλημα. Ελέγξτε τη σύνδεσή σας και δοκιμάστε ξανά.";
+const errorText = supabaseErrorMessage;
 const readSessionValue = (key) => {
   try {
     return sessionStorage.getItem(key);
@@ -233,7 +232,9 @@ function BookingSteps({ serviceChosen, timeChosen, detailsDone, finished }) {
 
 export function CustomerHome() {
   const [businesses, setBusinesses] = useState([]);
-  const [query, setQuery] = useState("");
+  const [searchParams] = useSearchParams();
+  const searchFromUrl = searchParams.get("q") || "";
+  const [query, setQuery] = useState(searchFromUrl);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   useEffect(() => {
@@ -248,8 +249,27 @@ export function CustomerHome() {
           "list_active_plus_businesses",
         );
         if (requestError) throw requestError;
+        const activeBusinesses = data || [];
+        let serviceNamesByBusiness = new Map();
+        if (activeBusinesses.length) {
+          const { data: services, error: servicesError } = await supabase
+            .from("services")
+            .select("business_id,name")
+            .in("business_id", activeBusinesses.map((business) => business.id))
+            .eq("is_active", true);
+          if (servicesError) throw servicesError;
+          serviceNamesByBusiness = new Map();
+          for (const service of services || []) {
+            const names = serviceNamesByBusiness.get(service.business_id) || [];
+            names.push(service.name);
+            serviceNamesByBusiness.set(service.business_id, names);
+          }
+        }
         if (active) {
-          setBusinesses(data || []);
+          setBusinesses(activeBusinesses.map((business) => ({
+            ...business,
+            service_names: serviceNamesByBusiness.get(business.id) || [],
+          })));
           setError("");
         }
       } catch (requestError) {
@@ -270,14 +290,8 @@ export function CustomerHome() {
       active = false;
     };
   }, []);
-  const normalizedQuery = query.trim().toLowerCase();
-  const filtered = normalizedQuery
-    ? businesses.filter((business) =>
-        `${business.name} ${business.description || ""} ${business.address || ""} ${business.city || ""} ${business.category || ""}`
-          .toLowerCase()
-          .includes(normalizedQuery),
-      )
-    : businesses;
+  useEffect(() => setQuery(searchFromUrl), [searchFromUrl]);
+  const filtered = businesses.filter((business) => matchesBusinessQuery(business, query));
   const content = (
     <>
       <main className="customer-home">
@@ -295,9 +309,10 @@ export function CustomerHome() {
           <div className="customer-search">
             <Search size={19} />
             <input
+              aria-label="Αναζήτηση επιχείρησης, κατηγορίας ή περιοχής"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Αναζητήστε επιχείρηση ή περιοχή..."
+              placeholder="Επιχείρηση, υπηρεσία ή περιοχή..."
             />
           </div>
         </section>
@@ -373,10 +388,20 @@ export function CustomerAuth({ mode }) {
     event.preventDefault();
     setLoading(true);
     setError("");
-    if (mode === "register" && form.password !== form.confirmPassword) {
-      setError("Οι κωδικοί πρόσβασης δεν ταιριάζουν.");
-      setLoading(false);
-      return;
+    if (mode === "register") {
+      const validationError = validateRegistration({
+        accountType: "customer",
+        email: form.email,
+        password: form.password,
+        fullName: form.fullName,
+        phone: form.phone,
+        confirmPassword: form.confirmPassword,
+      });
+      if (validationError) {
+        setError(validationError);
+        setLoading(false);
+        return;
+      }
     }
     if (!supabase || !isSupabaseConfigured) {
       setError(SUPABASE_CONFIG_ERROR);
@@ -402,7 +427,7 @@ export function CustomerAuth({ mode }) {
               },
             });
       if (result.error) {
-        setError(errorText(result.error));
+        setError(registrationAuthError(result.error) || errorText(result.error));
         return;
       }
       if (mode === "register" && !result.data.session) {
@@ -411,21 +436,18 @@ export function CustomerAuth({ mode }) {
         );
         return;
       }
-      if (mode === "register" && result.data.user) {
-        const { error: profileError } = await supabase
-          .from("customer_profiles")
-          .insert({
-            user_id: result.data.user.id,
-            full_name: form.fullName,
-            email: form.email,
-            phone: form.phone,
-          });
-        if (profileError) {
+      if (
+        result.data.user &&
+        (mode === "register" || result.data.user.user_metadata?.account_type === "customer")
+      ) {
+        try {
+          await ensureCustomerProfile(supabase, result.data.user);
+        } catch (profileError) {
           reportCriticalError(profileError, {
             feature: "customer-authentication",
             operation: "create-profile",
           });
-          setError("Ο λογαριασμός δημιουργήθηκε, αλλά δεν φορτώθηκε το προφίλ. Συνδεθείτε ξανά.");
+          setError("Η σύνδεση ολοκληρώθηκε, αλλά δεν δημιουργήθηκε το προφίλ. Συνδεθείτε ξανά για να επαναλάβετε την προσπάθεια.");
           return;
         }
       }
@@ -461,7 +483,7 @@ export function CustomerAuth({ mode }) {
             σε λίγα δευτερόλεπτα.
           </p>
         </div>
-        <small>© 2025 BookEasy</small>
+        <small>© {new Date().getFullYear()} BookEasy</small>
       </div>
       <div className="auth-form-wrap">
         <form className="auth-form" onSubmit={submit}>
@@ -574,6 +596,8 @@ async function loadBusinessData(slug) {
     serviceResult,
     staffResult,
     hoursResult,
+    breaksResult,
+    exceptionsResult,
     mediaResult,
     assignmentResult,
     timeZoneResult,
@@ -591,6 +615,8 @@ async function loadBusinessData(slug) {
       .eq("is_active", true)
       .order("name"),
     supabase.from("working_hours").select("*").eq("business_id", business.id),
+    supabase.from("working_hour_breaks").select("*").eq("business_id", business.id),
+    supabase.from("availability_exceptions").select("*").eq("business_id", business.id),
     supabase
       .from("business_media")
       .select("*")
@@ -606,6 +632,8 @@ async function loadBusinessData(slug) {
     serviceResult.error ||
     staffResult.error ||
     hoursResult.error ||
+    breaksResult.error ||
+    exceptionsResult.error ||
     mediaResult.error ||
     assignmentResult.error
   )
@@ -614,6 +642,8 @@ async function loadBusinessData(slug) {
         serviceResult.error ||
           staffResult.error ||
           hoursResult.error ||
+          breaksResult.error ||
+          exceptionsResult.error ||
           mediaResult.error ||
           assignmentResult.error,
       ),
@@ -639,23 +669,28 @@ async function loadBusinessData(slug) {
     services: serviceResult.data || [],
     staff: staffResult.data || [],
     hours: hoursResult.data || [],
+    breaks: breaksResult.data || [],
+    exceptions: exceptionsResult.data || [],
     media: mediaResult.data || [],
     assignments: assignmentResult.data || [],
     timeZone,
   };
 }
-function getSlots(date, service, staffMember, hours, appointments, timeZone) {
+function getSlots(date, service, staffMember, hours, breaks, exceptions, appointments, timeZone) {
   if (!service || !staffMember) return [];
   const [year, month, dayOfMonth] = date.split("-").map(Number);
   const day = new Date(Date.UTC(year, month - 1, dayOfMonth)).getUTCDay();
-  const businessHour = hours.find(
-    (item) => Number(item.day_of_week) === day && !item.staff_id,
+  const staffException = exceptions.find(
+    (item) => item.exception_date === date && item.staff_id === staffMember.id,
   );
-  const staffHour = hours.find(
-    (item) =>
-      Number(item.day_of_week) === day && item.staff_id === staffMember.id,
+  const businessException = exceptions.find(
+    (item) => item.exception_date === date && !item.staff_id,
   );
-  const hour = staffHour || businessHour;
+  const exception = staffException || businessException;
+  if (exception?.is_closed) return [];
+  const businessHour = hours.find((item) => Number(item.day_of_week) === day && !item.staff_id);
+  const staffHour = hours.find((item) => Number(item.day_of_week) === day && item.staff_id === staffMember.id);
+  const hour = exception || staffHour || businessHour;
   if (!hour || hour.is_closed) return [];
   const [openHour, openMinute] = hour.start_time
     .slice(0, 5)
@@ -677,7 +712,15 @@ function getSlots(date, service, staffMember, hours, appointments, timeZone) {
       timeZone,
     );
     const end = new Date(start.getTime() + service.duration_minutes * 60000);
+    const endTime = `${String(Math.floor((minute + service.duration_minutes) / 60)).padStart(2, "0")}:${String((minute + service.duration_minutes) % 60).padStart(2, "0")}`;
+    const overlapsBreak = breaks.some((item) =>
+      Number(item.day_of_week) === day &&
+      (!item.staff_id || item.staff_id === staffMember.id) &&
+      `${String(Math.floor(minute / 60)).padStart(2, "0")}:${String(minute % 60).padStart(2, "0")}` < item.end_time.slice(0, 5) &&
+      endTime > item.start_time.slice(0, 5),
+    );
     if (
+      !overlapsBreak &&
       !appointments.some(
         (appointment) =>
           start < new Date(appointment.ends_at) &&
@@ -1039,10 +1082,50 @@ export function CustomerBooking({ dashboardMode = false, business: dashboardBusi
       active = false;
     };
   }, [availabilityKey, availabilityRetry]);
+  useEffect(() => {
+    if (!supabase || !data?.business?.id || !selectedStaff?.id) return undefined;
+    const channel = supabase
+      .channel(`booking-availability-${selectedStaff.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "appointments",
+          filter: `staff_id=eq.${selectedStaff.id}`,
+        },
+        () => setAvailabilityRetry((value) => value + 1),
+      )
+      .subscribe();
+    return () => supabase.removeChannel(channel);
+  }, [data?.business?.id, selectedStaff?.id]);
+  useEffect(() => {
+    if (!supabase || !data?.business?.id || !slug) return undefined;
+    let active = true;
+    const refreshSchedule = async () => {
+      try {
+        const refreshed = await loadBusinessData(slug);
+        if (active) setData(refreshed);
+      } catch (requestError) {
+        reportCriticalError(requestError, { feature: "booking-availability", operation: "refresh-schedule" });
+        if (active) setBookingError(errorText(requestError));
+      }
+    };
+    const channel = supabase
+      .channel(`customer-schedule-${data.business.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "working_hours", filter: `business_id=eq.${data.business.id}` }, refreshSchedule)
+      .on("postgres_changes", { event: "*", schema: "public", table: "working_hour_breaks", filter: `business_id=eq.${data.business.id}` }, refreshSchedule)
+      .on("postgres_changes", { event: "*", schema: "public", table: "availability_exceptions", filter: `business_id=eq.${data.business.id}` }, refreshSchedule)
+      .subscribe();
+    return () => {
+      active = false;
+      supabase.removeChannel(channel);
+    };
+  }, [data?.business?.id, slug]);
   const slots = useMemo(
     () =>
-      availabilityReady ? getSlots(date, service, selectedStaff, data?.hours || [], appointments, data?.timeZone || "Europe/Athens") : [],
-    [availabilityReady, date, service, selectedStaff, data?.hours, appointments, data?.timeZone],
+      availabilityReady ? getSlots(date, service, selectedStaff, data?.hours || [], data?.breaks || [], data?.exceptions || [], appointments, data?.timeZone || "Europe/Athens") : [],
+    [availabilityReady, date, service, selectedStaff, data?.hours, data?.breaks, data?.exceptions, appointments, data?.timeZone],
   );
   const confirm = async () => {
     if (bookingSubmission.current) return;
@@ -1580,6 +1663,7 @@ export function CustomerAppointmentsPage() {
   const [error, setError] = useState("");
   const [loadingData, setLoadingData] = useState(true);
   const [canceling, setCanceling] = useState(null);
+  const [rescheduling, setRescheduling] = useState(null);
   const confirm = useConfirm();
   const appointmentsRef = useRef([]);
   const customerCancelledIds = useRef(new Set());
@@ -1761,13 +1845,22 @@ export function CustomerAppointmentsPage() {
                         </small>
                       </div>
                       {key === "upcoming" && (
-                        <button
-                          className="outline-button"
-                          disabled={canceling === appointment.id}
-                          onClick={() => cancel(appointment.id)}
-                        >
-                          {canceling === appointment.id ? "Ακύρωση..." : "Ακύρωση"}
-                        </button>
+                        <div className="customer-appointment-actions">
+                          <button
+                            className="outline-button"
+                            disabled={canceling === appointment.id}
+                            onClick={() => setRescheduling(appointment)}
+                          >
+                            Αλλαγή ώρας
+                          </button>
+                          <button
+                            className="outline-button"
+                            disabled={canceling === appointment.id}
+                            onClick={() => cancel(appointment.id)}
+                          >
+                            {canceling === appointment.id ? "Ακύρωση..." : "Ακύρωση"}
+                          </button>
+                        </div>
                       )}
                       {key !== "upcoming" && appointment.business?.slug && (
                         <Link className="rebook-link" to={`/b/${encodeURIComponent(appointment.business.slug)}`}>
@@ -1784,6 +1877,13 @@ export function CustomerAppointmentsPage() {
               </section>
             ))}
           </div>
+        )}
+        {rescheduling && (
+          <AppointmentRescheduleDialog
+            appointment={rescheduling}
+            onClose={() => setRescheduling(null)}
+            onSaved={load}
+          />
         )}
       </main>
     </>

@@ -10,6 +10,7 @@ import {
 } from "react-router-dom";
 import {
   Bell,
+  ArrowUpRight,
   CalendarDays,
   ChevronDown,
   ChevronLeft,
@@ -23,14 +24,17 @@ import {
   LayoutDashboard,
   LogOut,
   Mail,
+  MapPin,
   Menu,
   MessageCircle,
   Plus,
   RefreshCw,
   Send,
   Scissors,
+  Search,
   Settings,
   Sparkles,
+  Stethoscope,
   Trash2,
   UserRound,
   Users,
@@ -42,9 +46,13 @@ import {
   SUPABASE_CONFIG_ERROR,
 } from "./lib/supabase";
 import ErrorBoundary from "./ErrorBoundary";
+import AppointmentRescheduleDialog from "./AppointmentRescheduleDialog";
 import { reportCriticalError } from "./lib/errorReporting";
 import { invokeWithRetry } from "./lib/functions";
 import { safeReturnPath } from "./lib/returnPath";
+import { ensureProfessionalBusiness, registrationAuthError, validateRegistration } from "./lib/registration";
+import { supabaseErrorMessage } from "./lib/errorMessages";
+import { matchesBusinessQuery } from "./lib/directorySearch";
 import WeeklyActivity, { AnimatedNumber } from "./WeeklyActivity";
 import { EmptyState, Skeleton, StatusDot, useConfirm, useToast } from "./ui";
 
@@ -92,14 +100,7 @@ function decodeVapidPublicKey(value) {
   const padded = base64 + "=".repeat((4 - (base64.length % 4)) % 4);
   return Uint8Array.from(atob(padded), (character) => character.charCodeAt(0));
 }
-const errorText = (error) =>
-  error?.code === "23P01"
-    ? "Η ώρα έχει ήδη κρατηθεί. Επιλέξτε άλλη διαθέσιμη ώρα."
-    : String(error?.code || "").startsWith("BK")
-      ? "Η επιλεγμένη ώρα δεν είναι διαθέσιμη. Ανανεώστε και επιλέξτε άλλη ώρα."
-    : error?.code === "23505"
-      ? "Η καταχώρηση υπάρχει ήδη. Ανανεώστε τη σελίδα και δοκιμάστε ξανά."
-      : "Παρουσιάστηκε πρόβλημα. Ελέγξτε τη σύνδεσή σας και δοκιμάστε ξανά.";
+const errorText = supabaseErrorMessage;
 const slugify = (value) => {
   const greekMap = {
     ά: "a",
@@ -355,7 +356,7 @@ function App() {
   return (
     <Suspense fallback={<Loading />}>
     <Routes>
-      <Route path="/" element={<RouteBoundary><HomePage /></RouteBoundary>} />
+      <Route path="/" element={<RouteBoundary><HomePage business={business} user={auth.user} /></RouteBoundary>} />
       <Route path="/login" element={<RouteBoundary><AuthPage mode="login" /></RouteBoundary>} />
       <Route path="/register" element={<RouteBoundary><AuthPage mode="register" /></RouteBoundary>} />
       <Route path="/customer" element={<RouteBoundary><CustomerHome /></RouteBoundary>} />
@@ -393,39 +394,124 @@ function App() {
     </Suspense>
   );
 }
-function HomePage() {
+function HomePage({ business, user }) {
+  const [authModal, setAuthModal] = useState(null);
+
+  const previewAppointments = [
+    { time: "09:00", name: "Μαρία Κ.", service: "Κούρεμα", duration: "30′", color: "mint" },
+    { time: "10:00", name: "Νίκος Π.", service: "Περιποίηση", duration: "45′", color: "gold" },
+    { time: "11:30", name: "Ελένη Δ.", service: "Κούρεμα & styling", duration: "60′", color: "sage" },
+    { time: "13:00", name: "Γιώργος Μ.", service: "Ραντεβού", duration: "30′", color: "mint" },
+  ];
+
   return (
-    <div className="auth-layout home-layout">
-      <div className="auth-aside">
-        <div className="auth-brand-row"><Link className="brand light" to="/">
+    <div className="home-layout home-premium-minimal">
+      <header className="home-header">
+        <Link className="brand light home-brand" to="/" aria-label="BookEasy αρχική">
           <span className="brand-mark">B</span>
-          <span>
-            book<span>easy</span>
-          </span>
-        </Link></div>
-        <div>
-          <span className="eyebrow">BOOKEASY</span>
-          <h1>BookEasy</h1>
-          <p>
-            Κλείσε εύκολα το επόμενο ραντεβού σου ή διαχειρίσου την επιχείρησή
-            σου μέσα από μία απλή και σύγχρονη πλατφόρμα.
-          </p>
+          <span>book<span>easy</span></span>
+        </Link>
+
+        <div className="home-header-actions">
+          <button type="button" className="home-login" onClick={() => setAuthModal("login")}>
+            Σύνδεση
+          </button>
+          <button type="button" className="home-nav-cta" onClick={() => setAuthModal("register")}>
+            Για επαγγελματίες <ArrowUpRight size={15} />
+          </button>
         </div>
-        <small>© 2025 BookEasy</small>
-      </div>
-      <div className="auth-form-wrap">
-        <div className="auth-form">
-          <span className="eyebrow">ΚΑΛΩΣ ΗΡΘΑΤΕ ΣΤΟ BOOKEASY</span>
-          <h2>Πώς θέλετε να συνεχίσετε;</h2>
-          <p>Επιλέξτε τον λογαριασμό που θέλετε να χρησιμοποιήσετε.</p>
-          <Link className="primary-button full" to="/customer-login">
-            Είμαι Πελάτης <ChevronRight size={17} />
-          </Link>
-          <Link className="outline-button full" to="/login">
-            Είμαι Επαγγελματίας <ChevronRight size={17} />
-          </Link>
-        </div>
-      </div>
+      </header>
+
+      <main className="home-minimal-main home-showcase">
+        <section className="home-hero" aria-labelledby="home-title">
+          <div className="home-hero-copy">
+            <span className="home-kicker">
+              <span /> BOOKEASY · YOUR TIME, YOUR BUSINESS
+            </span>
+            <h1 id="home-title">
+              Τα ραντεβού σου,<br />
+              <em>πιο εύκολα από ποτέ.</em>
+            </h1>
+            <p>
+              Όλα τα ραντεβού της επιχείρησής σου σε ένα σημείο.
+              Οργάνωσε το πρόγραμμά σου και άφησε τους πελάτες σου
+              να κλείνουν online, εύκολα και γρήγορα.
+            </p>
+            <div className="home-showcase-actions">
+              <button type="button" className="home-primary-cta" onClick={() => setAuthModal("register")}>
+                Ξεκίνα δωρεάν <ArrowUpRight size={16} />
+              </button>
+              <span><Check size={15} /> Απλή οργάνωση. Περισσότερος χρόνος.</span>
+            </div>
+          </div>
+
+          <div className="home-product-preview" aria-label="Προεπισκόπηση ημερολογίου BookEasy">
+            <div className="home-preview-topline">
+              <span className="home-preview-live"><i /> LIVE PREVIEW</span>
+              <span>BOOKEASY DASHBOARD</span>
+            </div>
+
+            <div className="home-preview-window">
+              <aside className="home-preview-sidebar">
+                <div className="home-preview-brand"><span>B</span> bookeasy</div>
+                <div className="home-preview-nav active"><CalendarDays size={15} /> Ημερολόγιο</div>
+                <div className="home-preview-nav"><Users size={15} /> Πελάτες</div>
+                <div className="home-preview-nav"><Clock3 size={15} /> Διαθεσιμότητα</div>
+                <div className="home-preview-sidebar-bottom">Ο χώρος εργασίας σου</div>
+              </aside>
+
+              <div className="home-preview-main">
+                <div className="home-preview-heading">
+                  <div>
+                    <span>Ο ΧΩΡΟΣ ΕΡΓΑΣΙΑΣ ΣΟΥ</span>
+                    <h3>Το πρόγραμμά σου</h3>
+                    <p>Μια καθαρή εικόνα της ημέρας σου.</p>
+                  </div>
+                  <div className="home-preview-avatar">B</div>
+                </div>
+
+                <div className="home-preview-stats">
+                  <div><span>Σημερινά ραντεβού</span><strong>08</strong><small>Στο πρόγραμμά σου</small></div>
+                  <div><span>Ολοκληρωμένα</span><strong>03</strong><small>Μέχρι στιγμής</small></div>
+                  <div><span>Επόμενο ραντεβού</span><strong>09:00</strong><small>Σε λίγο ξεκινά</small></div>
+                </div>
+
+                <div className="home-preview-calendar">
+                  <div className="home-preview-calendar-head">
+                    <div><strong>Εβδομαδιαίο πρόγραμμα</strong><small>Δευτέρα – Παρασκευή</small></div>
+                    <div className="home-preview-arrows"><span><ChevronLeft size={13} /></span><span><ChevronRight size={13} /></span></div>
+                  </div>
+                  <div className="home-preview-days">
+                    <span>ΩΡΑ</span><span>ΔΕΥ</span><span className="today">ΤΡΙ</span><span>ΤΕΤ</span><span>ΠΕΜ</span><span>ΠΑΡ</span>
+                  </div>
+                  <div className="home-preview-schedule">
+                    <div className="home-preview-times"><span>09:00</span><span>10:00</span><span>11:00</span><span>12:00</span><span>13:00</span></div>
+                    <div className="home-preview-events">
+                      {previewAppointments.map((item) => (
+                        <div className={`home-preview-event ${item.color}`} key={item.time}>
+                          <b>{item.time} · {item.name}</b>
+                          <span>{item.service}</span>
+                        </div>
+                      ))}
+                      <div className="home-preview-current-time"><i /> ΤΩΡΑ</div>
+                    </div>
+                  </div>
+                </div>
+                <div className="home-preview-footer"><span><i /> Το πρόγραμμά σου με μια ματιά</span><span>ΠΡΟΕΠΙΣΚΟΠΗΣΗ</span></div>
+              </div>
+            </div>
+            <div className="home-preview-caption">Ένα οργανωμένο πρόγραμμα. Όλα σε ένα μέρος.</div>
+          </div>
+        </section>
+      </main>
+
+      {authModal && (
+        <AuthModal
+          mode={authModal}
+          onClose={() => setAuthModal(null)}
+          onModeChange={setAuthModal}
+        />
+      )}
     </div>
   );
 }
@@ -524,6 +610,33 @@ function Dashboard({
       window.clearInterval(refresh);
       supabase.removeChannel(channel);
     };
+  }, [business?.id]);
+  useEffect(() => {
+    if (!supabase || !business?.id) return undefined;
+    const channel = supabase
+      .channel(`professional-appointments-${business.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "appointments",
+          filter: `business_id=eq.${business.id}`,
+        },
+        () => appointments.reload(),
+      )
+      .subscribe();
+    return () => supabase.removeChannel(channel);
+  }, [business?.id]);
+  useEffect(() => {
+    if (!supabase || !business?.id) return undefined;
+    const channel = supabase
+      .channel(`professional-availability-${business.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "working_hours", filter: `business_id=eq.${business.id}` }, () => hours.reload())
+      .on("postgres_changes", { event: "*", schema: "public", table: "working_hour_breaks", filter: `business_id=eq.${business.id}` }, () => hours.reload())
+      .on("postgres_changes", { event: "*", schema: "public", table: "availability_exceptions", filter: `business_id=eq.${business.id}` }, () => hours.reload())
+      .subscribe();
+    return () => supabase.removeChannel(channel);
   }, [business?.id]);
   if (businessLoading) return <Loading />;
   if (businessError || !business)
@@ -1231,7 +1344,7 @@ function Insights({ appointments }) {
     <>
       <div className="insights-grid">
         <section className="panel insight">
-          <div className="panel-heading"><div><h2>Έσοδα κρατήσεων</h2><p>Τρέχων μήνας</p></div></div>
+          <div className="panel-heading"><div><h2>Αξία κρατήσεων</h2><p>Τρέχων μήνας</p></div></div>
           <strong className="insight-figure">{bookedValue.toLocaleString("el-GR", { style: "currency", currency: "EUR" })}</strong>
           <p className="insight-note">Αξία ενεργών κρατήσεων βάσει τιμών υπηρεσιών. Δεν αποτυπώνει πληρωμές.</p>
           <div className="insight-meta"><span>{monthActive.length} ενεργές κρατήσεις</span><span>{cancelRate}% ακυρώσεις</span></div>
@@ -1536,6 +1649,7 @@ function Calendar({ appointments }) {
 }
 function Appointments({ appointments }) {
   const [view, setView] = useState("today");
+  const [rescheduling, setRescheduling] = useState(null);
   const toast = useToast();
   const confirm = useConfirm();
   const update = async (id, status) => {
@@ -1567,26 +1681,6 @@ function Appointments({ appointments }) {
     return view === "history" ? appointmentDate < today : appointmentDate >= today;
   });
 
-  const remove = async (id) => {
-    if (!await confirm({
-      title: "Διαγραφή ραντεβού",
-      message: "Το ραντεβού θα διαγραφεί οριστικά από το ιστορικό σας.",
-      confirmLabel: "Διαγραφή",
-      cancelLabel: "Πίσω",
-      tone: "danger",
-    })) return;
-    if (supabase) {
-      const { error } = await supabase
-        .from("appointments")
-        .delete()
-        .eq("id", id);
-      if (error) toast(errorText(error), "error");
-      else {
-        toast("Το ραντεβού διαγράφηκε.", "success");
-        appointments.reload();
-      }
-    }
-  };
   return (
     <>
       <PageHeader
@@ -1662,6 +1756,16 @@ function Appointments({ appointments }) {
                     >
                       <CheckCheck size={15} />
                     </button>
+                    {!( ["cancelled", "completed"].includes(item.status)) && (
+                      <button
+                        className="mini-action"
+                        onClick={() => setRescheduling(item)}
+                        aria-label="Αλλαγή ημερομηνίας ή ώρας"
+                        title="Αλλαγή ώρας"
+                      >
+                        Αλλαγή ώρας
+                      </button>
+                    )}
                     {!(["cancelled", "completed"].includes(item.status)) && (
                       <button
                         className="mini-action danger"
@@ -1672,13 +1776,6 @@ function Appointments({ appointments }) {
                         {item.status === "confirmed" ? "Ακύρωση" : "Απόρριψη"}
                       </button>
                     )}
-                    <button
-                      className="mini-action danger"
-                      aria-label="Διαγραφή ραντεβού"
-                      onClick={() => remove(item.id)}
-                    >
-                      <Trash2 size={14} />
-                    </button>
                   </td>
                 </tr>
               ))
@@ -1686,28 +1783,63 @@ function Appointments({ appointments }) {
           </tbody>
         </table>
       </section>
+      {rescheduling && (
+        <AppointmentRescheduleDialog
+          appointment={rescheduling}
+          onClose={() => setRescheduling(null)}
+          onSaved={appointments.reload}
+        />
+      )}
     </>
   );
 }
 
-function Editor({ title, value, fields, onClose, onSave }) {
+function Editor({ title, value, fields, onClose, onSave, saving = false }) {
   const [form, setForm] = useState(value);
+  const dialogRef = useRef(null);
+  useEffect(() => {
+    const previous = document.activeElement;
+    const focusableSelector = "button:not(:disabled), input:not(:disabled), textarea:not(:disabled), select:not(:disabled)";
+    const focusable = dialogRef.current?.querySelectorAll(focusableSelector);
+    focusable?.[1]?.focus();
+    const onKeyDown = (event) => {
+      if (event.key === "Escape") {
+        onClose();
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const current = dialogRef.current?.querySelectorAll(focusableSelector);
+      if (!current?.length) return;
+      if (event.shiftKey && document.activeElement === current[0]) {
+        event.preventDefault();
+        current[current.length - 1].focus();
+      } else if (!event.shiftKey && document.activeElement === current[current.length - 1]) {
+        event.preventDefault();
+        current[0].focus();
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      previous?.focus?.();
+    };
+  }, []);
   return (
     <div className="modal-backdrop open">
-      <div className="modal">
+      <div ref={dialogRef} className="modal" role="dialog" aria-modal="true" aria-labelledby="editor-title">
         <div className="modal-header">
           <div>
             <span className="eyebrow">ΕΠΕΞΕΡΓΑΣΙΑ</span>
-            <h2>{title}</h2>
+            <h2 id="editor-title">{title}</h2>
           </div>
-          <button className="icon-button" onClick={onClose}>
+          <button type="button" className="icon-button" aria-label="Κλείσιμο παραθύρου επεξεργασίας" onClick={onClose} disabled={saving}>
             <X size={18} />
           </button>
         </div>
         <form
           onSubmit={(event) => {
             event.preventDefault();
-            onSave(form);
+            if (!saving) onSave(form);
           }}
         >
           {fields.map(([key, label]) => (
@@ -1716,6 +1848,7 @@ function Editor({ title, value, fields, onClose, onSave }) {
               {key === "description" ? (
                 <textarea
                   value={form[key] || ""}
+                  disabled={saving}
                   onChange={(e) => setForm({ ...form, [key]: e.target.value })}
                 />
               ) : (
@@ -1726,6 +1859,7 @@ function Editor({ title, value, fields, onClose, onSave }) {
                       : "text"
                   }
                   value={form[key] ?? ""}
+                  disabled={saving}
                   onChange={(e) => setForm({ ...form, [key]: e.target.value })}
                   required={key === "name"}
                 />
@@ -1736,6 +1870,7 @@ function Editor({ title, value, fields, onClose, onSave }) {
             <input
               type="checkbox"
               checked={form.is_active !== false}
+              disabled={saving}
               onChange={(e) =>
                 setForm({ ...form, is_active: e.target.checked })
               }
@@ -1743,10 +1878,10 @@ function Editor({ title, value, fields, onClose, onSave }) {
             Ενεργό
           </label>
           <div className="modal-footer">
-            <button type="button" className="outline-button" onClick={onClose}>
+            <button type="button" className="outline-button" onClick={onClose} disabled={saving}>
               Άκυρο
             </button>
-            <button className="primary-button">Αποθήκευση</button>
+            <button className="primary-button" disabled={saving}>{saving ? "Αποθήκευση..." : "Αποθήκευση"}</button>
           </div>
         </form>
       </div>
@@ -2140,7 +2275,7 @@ function SubscriptionSettings({ business }) {
           <button className="primary-button" disabled={working} onClick={startCheckout}>
             {working ? "Μετάβαση στο Checkout..." : canResumeCheckout ? "Συνέχεια στο Checkout" : "Συνέχεια στο Stripe Checkout"}
           </button>
-          <small>Επιλέξτε διαθέσιμο τρόπο πληρωμής στο ασφαλές Stripe Checkout.</small>
+          <small>Ασφαλές Stripe Checkout με κάρτες Visa και Mastercard, όταν είναι ενεργές και επιλέξιμες για τον λογαριασμό σας.</small>
         </div>
       )}
       <small className="subscription-footnote">Η ακύρωση ισχύει στο τέλος της πληρωμένης περιόδου. Δεν εκδίδεται αυτόματη επιστροφή χρημάτων.</small>
@@ -2436,40 +2571,52 @@ function CustomerSupportCenter({ business }) {
 function Services({ business }) {
   const store = useData("services", business.id, { order: "name" });
   const [editing, setEditing] = useState(null);
+  const [saving, setSaving] = useState(false);
   const toast = useToast();
   const confirm = useConfirm();
   const save = async (form) => {
+    if (saving) return;
+    if (!String(form.name || "").trim() || !Number.isInteger(Number(form.duration_minutes)) || Number(form.duration_minutes) < 1 || !Number.isFinite(Number(form.price)) || Number(form.price) < 0) {
+      toast("Ελέγξτε το όνομα, τη διάρκεια και την τιμή της υπηρεσίας.", "error");
+      return;
+    }
+    setSaving(true);
     const payload = {
       business_id: business.id,
-      name: form.name,
+      name: form.name.trim(),
       description: form.description,
       duration_minutes: Number(form.duration_minutes),
       price: Number(form.price),
       is_active: form.is_active,
     };
-    const request = form.id
-      ? supabase.from("services").update(payload).eq("id", form.id)
-      : supabase.from("services").insert(payload);
-    const { error } = await request;
-    if (error) toast(errorText(error), "error");
-    else {
+    try {
+      const request = form.id
+        ? supabase.from("services").update(payload).eq("id", form.id)
+        : supabase.from("services").insert(payload);
+      const { error } = await request;
+      if (error) throw error;
       toast("Η υπηρεσία αποθηκεύτηκε.", "success");
       setEditing(null);
       store.reload();
+    } catch (error) {
+      reportCriticalError(error, { feature: "services", operation: "save-service" });
+      toast(errorText(error), "error");
+    } finally {
+      setSaving(false);
     }
   };
   const remove = async (id) => {
     if (!await confirm({
-      title: "Διαγραφή υπηρεσίας",
-      message: "Η υπηρεσία θα διαγραφεί οριστικά και δεν θα είναι διαθέσιμη για νέες κρατήσεις.",
-      confirmLabel: "Διαγραφή",
+      title: "Απενεργοποίηση υπηρεσίας",
+      message: "Η υπηρεσία δεν θα εμφανίζεται σε νέες κρατήσεις. Τα υπάρχοντα ραντεβού και το ιστορικό της θα διατηρηθούν.",
+      confirmLabel: "Απενεργοποίηση",
       cancelLabel: "Πίσω",
       tone: "danger",
     })) return;
-    const { error } = await supabase.from("services").delete().eq("id", id);
+    const { error } = await supabase.from("services").update({ is_active: false }).eq("id", id);
     if (error) toast(errorText(error), "error");
     else {
-      toast("Η υπηρεσία διαγράφηκε.", "success");
+      toast("Η υπηρεσία απενεργοποιήθηκε. Το ιστορικό της διατηρείται.", "success");
       store.reload();
     }
   };
@@ -2523,6 +2670,7 @@ function Services({ business }) {
               </button>
               <button
                 className="mini-action danger"
+                aria-label={`Απενεργοποίηση υπηρεσίας ${service.name}`}
                 onClick={() => remove(service.id)}
               >
                 <Trash2 size={14} />
@@ -2543,6 +2691,7 @@ function Services({ business }) {
           ]}
           onClose={() => setEditing(null)}
           onSave={save}
+          saving={saving}
         />
       )}
     </>
@@ -2552,38 +2701,50 @@ function Staff({ business }) {
   const store = useData("staff", business.id, { order: "name" });
   const [editing, setEditing] = useState(null);
   const [hoursFor, setHoursFor] = useState(null);
+  const [saving, setSaving] = useState(false);
   const toast = useToast();
   const confirm = useConfirm();
   const save = async (form) => {
+    if (saving) return;
+    if (!String(form.name || "").trim()) {
+      toast("Συμπληρώστε το όνομα του μέλους της ομάδας.", "error");
+      return;
+    }
+    setSaving(true);
     const payload = {
       business_id: business.id,
-      name: form.name,
+      name: form.name.trim(),
       description: form.description,
       is_active: form.is_active,
     };
-    const request = form.id
-      ? supabase.from("staff").update(payload).eq("id", form.id)
-      : supabase.from("staff").insert(payload);
-    const { error } = await request;
-    if (error) toast(errorText(error), "error");
-    else {
+    try {
+      const request = form.id
+        ? supabase.from("staff").update(payload).eq("id", form.id)
+        : supabase.from("staff").insert(payload);
+      const { error } = await request;
+      if (error) throw error;
       toast("Το μέλος της ομάδας αποθηκεύτηκε.", "success");
       setEditing(null);
       store.reload();
+    } catch (error) {
+      reportCriticalError(error, { feature: "staff", operation: "save-staff-member" });
+      toast(errorText(error), "error");
+    } finally {
+      setSaving(false);
     }
   };
   const remove = async (id) => {
     if (!await confirm({
-      title: "Διαγραφή μέλους ομάδας",
-      message: "Το μέλος και το ωράριό του θα διαγραφούν οριστικά.",
-      confirmLabel: "Διαγραφή",
+      title: "Απενεργοποίηση μέλους ομάδας",
+      message: "Το μέλος δεν θα εμφανίζεται σε νέες κρατήσεις. Τα υπάρχοντα ραντεβού και το ιστορικό θα διατηρηθούν.",
+      confirmLabel: "Απενεργοποίηση",
       cancelLabel: "Πίσω",
       tone: "danger",
     })) return;
-    const { error } = await supabase.from("staff").delete().eq("id", id);
+    const { error } = await supabase.from("staff").update({ is_active: false }).eq("id", id);
     if (error) toast(errorText(error), "error");
     else {
-      toast("Το μέλος της ομάδας διαγράφηκε.", "success");
+      toast("Το μέλος της ομάδας απενεργοποιήθηκε. Το ιστορικό διατηρείται.", "success");
       store.reload();
     }
   };
@@ -2636,6 +2797,7 @@ function Staff({ business }) {
               </button>
               <button
                 className="mini-action danger"
+                aria-label={`Απενεργοποίηση μέλους ομάδας ${person.name}`}
                 onClick={() => remove(person.id)}
               >
                 <Trash2 size={14} /> Διαγραφή
@@ -2654,6 +2816,7 @@ function Staff({ business }) {
           ]}
           onClose={() => setEditing(null)}
           onSave={save}
+          saving={saving}
         />
       )}
       {hoursFor && (
@@ -2667,50 +2830,147 @@ function Staff({ business }) {
   );
 }
 
+function ScheduleRulesEditor({ breaks, setBreaks, exceptions, setExceptions, saving }) {
+  const addBreak = (day_of_week) => setBreaks((current) => [
+    ...current,
+    { key: crypto.randomUUID(), day_of_week, start_time: "12:00", end_time: "13:00" },
+  ]);
+  const addException = () => setExceptions((current) => [
+    ...current,
+    { key: crypto.randomUUID(), exception_date: "", is_closed: true, start_time: "", end_time: "" },
+  ]);
+
+  return (
+    <div className="schedule-rules-editor">
+      <section aria-labelledby="breaks-title">
+        <h3 id="breaks-title">Εβδομαδιαία διαλείμματα</h3>
+        {dayNames.map((day, day_of_week) => (
+          <fieldset className="schedule-rule-row" key={day_of_week}>
+            <legend>{day}</legend>
+            {breaks.filter((item) => Number(item.day_of_week) === day_of_week).map((item) => (
+              <div className="schedule-rule-fields" key={item.key}>
+                <label>Από<input type="time" value={item.start_time?.slice(0, 5) || ""} disabled={saving} onChange={(event) => setBreaks((current) => current.map((entry) => entry.key === item.key ? { ...entry, start_time: event.target.value } : entry))} /></label>
+                <label>Έως<input type="time" value={item.end_time?.slice(0, 5) || ""} disabled={saving} onChange={(event) => setBreaks((current) => current.map((entry) => entry.key === item.key ? { ...entry, end_time: event.target.value } : entry))} /></label>
+                <button type="button" className="mini-action danger" aria-label={`Αφαίρεση διαλείμματος ${day}`} disabled={saving} onClick={() => setBreaks((current) => current.filter((entry) => entry.key !== item.key))}><Trash2 size={14} /></button>
+              </div>
+            ))}
+            <button type="button" className="outline-button schedule-add-rule" disabled={saving} onClick={() => addBreak(day_of_week)}>Προσθήκη διαλείμματος</button>
+          </fieldset>
+        ))}
+      </section>
+      <section aria-labelledby="exceptions-title">
+        <div className="schedule-rules-heading"><h3 id="exceptions-title">Αργίες και εξαιρέσεις</h3><button type="button" className="outline-button" disabled={saving} onClick={addException}>Προσθήκη ημερομηνίας</button></div>
+        {exceptions.map((item) => (
+          <div className="schedule-exception-row" key={item.key}>
+            <label>Ημερομηνία<input type="date" value={item.exception_date || ""} disabled={saving} onChange={(event) => setExceptions((current) => current.map((entry) => entry.key === item.key ? { ...entry, exception_date: event.target.value } : entry))} /></label>
+            <label className="check-label"><input type="checkbox" checked={Boolean(item.is_closed)} disabled={saving} onChange={(event) => setExceptions((current) => current.map((entry) => entry.key === item.key ? { ...entry, is_closed: event.target.checked } : entry))} />Κλειστά</label>
+            {!item.is_closed && <div className="schedule-rule-fields">
+              <label>Από<input type="time" value={item.start_time || ""} disabled={saving} onChange={(event) => setExceptions((current) => current.map((entry) => entry.key === item.key ? { ...entry, start_time: event.target.value } : entry))} /></label>
+              <label>Έως<input type="time" value={item.end_time || ""} disabled={saving} onChange={(event) => setExceptions((current) => current.map((entry) => entry.key === item.key ? { ...entry, end_time: event.target.value } : entry))} /></label>
+            </div>}
+            <button type="button" className="mini-action danger" aria-label="Αφαίρεση εξαίρεσης" disabled={saving} onClick={() => setExceptions((current) => current.filter((entry) => entry.key !== item.key))}><Trash2 size={14} /></button>
+          </div>
+        ))}
+      </section>
+    </div>
+  );
+}
+
 function StaffHoursEditor({ business, staffMember, onClose }) {
   const [hours, setHours] = useState([]);
+  const [breaks, setBreaks] = useState([]);
+  const [exceptions, setExceptions] = useState([]);
   const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
   useEffect(() => {
+    let active = true;
     async function load() {
-      const { data, error } = await supabase
-        .from("working_hours")
-        .select("*")
-        .eq("business_id", business.id)
-        .eq("staff_id", staffMember.id)
-        .order("day_of_week");
-      if (error) {
-        setMessage(errorText(error));
-        return;
+      try {
+        const [hoursResult, breaksResult, exceptionsResult] = await Promise.all([
+          supabase.from("working_hours").select("*").eq("business_id", business.id).eq("staff_id", staffMember.id).order("day_of_week"),
+          supabase.from("working_hour_breaks").select("*").eq("business_id", business.id).eq("staff_id", staffMember.id).order("day_of_week"),
+          supabase.from("availability_exceptions").select("*").eq("business_id", business.id).eq("staff_id", staffMember.id).order("exception_date"),
+        ]);
+        const loadError = hoursResult.error || breaksResult.error || exceptionsResult.error;
+        if (loadError) throw loadError;
+        if (!active) return;
+        setHours(
+          (hoursResult.data?.length
+            ? hoursResult.data
+            : dayNames.map((name, day_of_week) => ({
+                name,
+                day_of_week,
+                start_time: "09:00:00",
+                end_time: "18:00:00",
+                is_closed: day_of_week === 0,
+              })))
+            .map((item) => ({ ...item, name: dayNames[item.day_of_week] })),
+        );
+          setBreaks((breaksResult.data || []).map((item) => ({ ...item, key: item.id })));
+          setExceptions((exceptionsResult.data || []).map((item) => ({ ...item, key: item.id })));
+      } catch (error) {
+        if (active) {
+          setLoadFailed(true);
+          setMessage(errorText(error));
+        }
+      } finally {
+        if (active) setLoading(false);
       }
-      setHours(
-        (data?.length
-          ? data
-          : dayNames.map((name, day_of_week) => ({
-              name,
-              day_of_week,
-              start_time: "09:00:00",
-              end_time: "18:00:00",
-              is_closed: day_of_week === 0,
-            })))
-          .map((item) => ({ ...item, name: dayNames[item.day_of_week] })),
-      );
     }
     load();
+    return () => { active = false; };
   }, [business.id, staffMember.id]);
   const save = async (event) => {
     event.preventDefault();
-    const { error } = await supabase.rpc("replace_working_hours", {
-      p_business: business.id,
-      p_staff: staffMember.id,
-      p_hours: hours.map(({ day_of_week, start_time, end_time, is_closed }) => ({
-        day_of_week,
-        start_time,
-        end_time,
-        is_closed: Boolean(is_closed),
-      })),
+    if (saving || loading || loadFailed) return;
+    if (hours.some((hour) => !hour.is_closed && hour.start_time >= hour.end_time)) {
+      setMessage("Για κάθε ημέρα λειτουργίας, η ώρα έναρξης πρέπει να προηγείται της ώρας λήξης.");
+      return;
+    }
+    const invalidBreak = breaks.some((item) => {
+      const dayHours = hours.find((hour) => Number(hour.day_of_week) === Number(item.day_of_week));
+      return !item.start_time || !item.end_time || item.start_time >= item.end_time ||
+        !dayHours || dayHours.is_closed || item.start_time < dayHours.start_time || item.end_time > dayHours.end_time;
     });
-    if (error) setMessage(errorText(error));
-    else onClose();
+    if (invalidBreak) {
+      setMessage("Ελέγξτε τα διαλείμματα. Κάθε διάλειμμα πρέπει να βρίσκεται μέσα στο ωράριο λειτουργίας.");
+      return;
+    }
+    const exceptionDates = exceptions.map((item) => item.exception_date);
+    if (exceptions.some((item) => !item.exception_date || (!item.is_closed && (!item.start_time || !item.end_time || item.start_time >= item.end_time))) || new Set(exceptionDates).size !== exceptionDates.length) {
+      setMessage("Ελέγξτε τις αργίες και τις εξαιρέσεις. Κάθε ημερομηνία πρέπει να είναι μοναδική και το ειδικό ωράριο έγκυρο.");
+      return;
+    }
+    setSaving(true);
+    setMessage("");
+    try {
+      const { error } = await supabase.rpc("replace_availability_schedule", {
+        p_business: business.id,
+        p_staff: staffMember.id,
+        p_hours: hours.map(({ day_of_week, start_time, end_time, is_closed }) => ({
+          day_of_week,
+          start_time,
+          end_time,
+          is_closed: Boolean(is_closed),
+        })),
+        p_breaks: breaks.map(({ day_of_week, start_time, end_time }) => ({ day_of_week, start_time, end_time })),
+        p_exceptions: exceptions.map(({ exception_date, is_closed, start_time, end_time }) => ({
+          exception_date,
+          is_closed: Boolean(is_closed),
+          start_time: is_closed ? null : start_time,
+          end_time: is_closed ? null : end_time,
+        })),
+      });
+      if (error) throw error;
+      onClose();
+    } catch (error) {
+      reportCriticalError(error, { feature: "working-hours", operation: "save-staff-hours" });
+      setMessage(errorText(error));
+    } finally {
+      setSaving(false);
+    }
   };
   return (
     <div className="modal-backdrop open">
@@ -2726,13 +2986,14 @@ function StaffHoursEditor({ business, staffMember, onClose }) {
         </div>
         <form onSubmit={save}>
           {message && <Notice message={message} />}
-          <div className="hours-editor">
-            {hours.map((hour) => (
+          {loading ? <Loading /> : <>
+            <div className="hours-editor">
+              {hours.map((hour) => (
               <div key={hour.day_of_week}>
                 <strong>{hour.name}</strong>
                 <input
                   type="time"
-                  disabled={hour.is_closed}
+                  disabled={hour.is_closed || saving}
                   value={hour.start_time?.slice(0, 5) || "09:00"}
                   onChange={(event) =>
                     setHours(
@@ -2747,7 +3008,7 @@ function StaffHoursEditor({ business, staffMember, onClose }) {
                 <span>–</span>
                 <input
                   type="time"
-                  disabled={hour.is_closed}
+                  disabled={hour.is_closed || saving}
                   value={hour.end_time?.slice(0, 5) || "18:00"}
                   onChange={(event) =>
                     setHours(
@@ -2763,6 +3024,7 @@ function StaffHoursEditor({ business, staffMember, onClose }) {
                   <input
                     type="checkbox"
                     checked={hour.is_closed}
+                    disabled={saving}
                     onChange={(event) =>
                       setHours(
                         hours.map((item) =>
@@ -2776,13 +3038,17 @@ function StaffHoursEditor({ business, staffMember, onClose }) {
                   Κλειστά
                 </label>
               </div>
-            ))}
-          </div>
+              ))}
+            </div>
+            <ScheduleRulesEditor breaks={breaks} setBreaks={setBreaks} exceptions={exceptions} setExceptions={setExceptions} saving={saving} />
+          </>}
           <div className="modal-footer">
-            <button type="button" className="outline-button" onClick={onClose}>
+            <button type="button" className="outline-button" onClick={onClose} disabled={saving}>
               Άκυρο
             </button>
-            <button className="primary-button">Αποθήκευση</button>
+            <button className="primary-button" disabled={loading || saving || loadFailed}>
+              {saving ? "Αποθήκευση..." : loadFailed ? "Δεν είναι δυνατή η αποθήκευση" : "Αποθήκευση"}
+            </button>
           </div>
         </form>
       </div>
@@ -2800,6 +3066,8 @@ function Profile({ business, setBusiness }) {
   });
   const [message, setMessage] = useState("");
   const [hours, setHours] = useState([]);
+  const [breaks, setBreaks] = useState([]);
+  const [exceptions, setExceptions] = useState([]);
   const [photos, setPhotos] = useState("");
   const [uploading, setUploading] = useState("");
   const [saving, setSaving] = useState(false);
@@ -2814,6 +3082,8 @@ function Profile({ business, setBusiness }) {
   useEffect(() => {
     Promise.all([
       supabase.from("working_hours").select("*").eq("business_id", business.id),
+      supabase.from("working_hour_breaks").select("*").eq("business_id", business.id).is("staff_id", null),
+      supabase.from("availability_exceptions").select("*").eq("business_id", business.id).is("staff_id", null).order("exception_date"),
       supabase
         .from("business_media")
         .select("url")
@@ -2824,14 +3094,19 @@ function Profile({ business, setBusiness }) {
         .select("professional_email,email_is_public,time_zone")
         .eq("business_id", business.id)
         .maybeSingle(),
-    ]).then(([hourResult, mediaResult, contactResult]) => {
+    ]).then(([hourResult, breakResult, exceptionResult, mediaResult, contactResult]) => {
       if (hourResult.error) setMessage(errorText(hourResult.error));
+      if (breakResult.error) setMessage(errorText(breakResult.error));
+      if (exceptionResult.error) setMessage(errorText(exceptionResult.error));
+      const businessHours = (hourResult.data || []).filter((item) => !item.staff_id);
       setHours(
-        (hourResult.data?.length ? hourResult.data : defaultHours).map((item) => ({
+        (businessHours.length ? businessHours : defaultHours).map((item) => ({
           ...item,
           name: dayNames[item.day_of_week],
         })),
       );
+      setBreaks((breakResult.data || []).map((item) => ({ ...item, key: item.id })));
+      setExceptions((exceptionResult.data || []).map((item) => ({ ...item, key: item.id })));
       if (mediaResult.error) setMessage(errorText(mediaResult.error));
       setPhotos((mediaResult.data || []).map((item) => item.url).join(", "));
       if (contactResult.error) setMessage("Δεν ήταν δυνατή η φόρτωση των στοιχείων επικοινωνίας.");
@@ -2961,8 +3236,25 @@ const performSave = async () => {
       .split(",")
       .map((url) => url.trim())
       .filter(Boolean);
-    // One database transaction: a failure leaves the previously saved profile, hours and photos untouched.
-    const { error } = await supabase.rpc("save_business_profile", {
+    const invalidBreak = breaks.some((item) => {
+      const dayHours = hours.find((hour) => Number(hour.day_of_week) === Number(item.day_of_week));
+      return !item.start_time || !item.end_time || item.start_time >= item.end_time ||
+        !dayHours || dayHours.is_closed || item.start_time < dayHours.start_time || item.end_time > dayHours.end_time;
+    });
+    if (invalidBreak) {
+      setMessage("Ελέγξτε τα διαλείμματα. Κάθε διάλειμμα πρέπει να βρίσκεται μέσα στο ωράριο λειτουργίας.");
+      return;
+    }
+    if (breaks.some((item) => !item.start_time || !item.end_time || item.start_time >= item.end_time)) {
+      setMessage("Ελέγξτε ότι κάθε διάλειμμα έχει έγκυρη ώρα έναρξης και λήξης.");
+      return;
+    }
+    if (exceptions.some((item) => !item.exception_date || (!item.is_closed && (!item.start_time || !item.end_time || item.start_time >= item.end_time))) || new Set(exceptions.map((item) => item.exception_date)).size !== exceptions.length) {
+      setMessage("Ελέγξτε τις αργίες και τις εξαιρέσεις. Οι ημερομηνίες πρέπει να είναι μοναδικές και τα ωράρια έγκυρα.");
+      return;
+    }
+    // Profile and complete availability changes are committed in one database transaction.
+    const { error } = await supabase.rpc("save_business_profile_with_schedule", {
       p_business: business.id,
       p_profile: {
         name: form.name,
@@ -2986,6 +3278,13 @@ const performSave = async () => {
         start_time,
         end_time,
         is_closed: Boolean(is_closed),
+      })),
+      p_breaks: breaks.map(({ day_of_week, start_time, end_time }) => ({ day_of_week, start_time, end_time })),
+      p_exceptions: exceptions.map(({ exception_date, is_closed, start_time, end_time }) => ({
+        exception_date,
+        is_closed: Boolean(is_closed),
+        start_time: is_closed ? null : start_time,
+        end_time: is_closed ? null : end_time,
       })),
       p_urls: urls,
     });
@@ -3012,7 +3311,7 @@ const performSave = async () => {
         feature: "business-profile",
         operation: "save-profile-settings",
       });
-      setMessage("Δεν ήταν δυνατή η αποθήκευση. Ελέγξτε τη σύνδεσή σας και δοκιμάστε ξανά.");
+      setMessage(errorText(requestError));
     } finally {
       setSaving(false);
     }
@@ -3155,7 +3454,7 @@ const performSave = async () => {
               Primary color
               <input
                 type="color"
-                value={form.primary_color || "#1664d9"}
+                value={form.primary_color || "#A78BFA"}
                 onChange={(e) =>
                   setForm({ ...form, primary_color: e.target.value })
                 }
@@ -3233,6 +3532,7 @@ const performSave = async () => {
               </div>
             ))}
           </div>
+          <ScheduleRulesEditor breaks={breaks} setBreaks={setBreaks} exceptions={exceptions} setExceptions={setExceptions} saving={saving || Boolean(uploading)} />
           <div className="form-actions">
             <button className="primary-button" disabled={saving || Boolean(uploading)}>
               {saving ? "Αποθήκευση..." : "Αποθήκευση αλλαγών"}
@@ -3300,7 +3600,57 @@ function Customers({ business }) {
   );
 }
 
-function AuthPage({ mode, customer = false }) {
+function AuthModal({ mode, onClose, onModeChange }) {
+  const dialogRef = useRef(null);
+  useEffect(() => {
+    const previous = document.activeElement;
+    const focusableSelector = "button:not(:disabled), input:not(:disabled), a[href]";
+    dialogRef.current?.querySelector("input")?.focus();
+    const onKeyDown = (event) => {
+      if (event.key === "Escape") {
+        onClose();
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const focusable = dialogRef.current?.querySelectorAll(focusableSelector);
+      if (!focusable?.length) return;
+      if (event.shiftKey && document.activeElement === focusable[0]) {
+        event.preventDefault();
+        focusable[focusable.length - 1].focus();
+      } else if (!event.shiftKey && document.activeElement === focusable[focusable.length - 1]) {
+        event.preventDefault();
+        focusable[0].focus();
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      previous?.focus?.();
+    };
+  }, [onClose]);
+
+  return (
+    <div className="home-auth-backdrop" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
+      <section ref={dialogRef} className="home-auth-modal" role="dialog" aria-modal="true" aria-labelledby="home-auth-title">
+        <div className="home-auth-modal-heading">
+          <span className="home-auth-modal-mark">B</span>
+          <span id="home-auth-title">{mode === "login" ? "Σύνδεση επαγγελματία" : "Εγγραφή επαγγελματία"}</span>
+          <button type="button" className="home-auth-close" aria-label="Κλείσιμο παραθύρου" onClick={onClose}>
+            <X size={18} />
+          </button>
+        </div>
+        <AuthPage
+          mode={mode}
+          modal
+          onModeChange={onModeChange}
+          onAuthenticated={onClose}
+        />
+      </section>
+    </div>
+  );
+}
+
+function AuthPage({ mode, customer = false, modal = false, onModeChange, onAuthenticated }) {
   const navigate = useNavigate();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -3314,6 +3664,20 @@ function AuthPage({ mode, customer = false }) {
     if (loading) return;
     setLoading(true);
     setError("");
+    if (mode === "register") {
+      const validationError = validateRegistration({
+        accountType: "professional",
+        email: form.email,
+        password: form.password,
+        businessName: form.businessName,
+      });
+      if (validationError) {
+        setError(validationError);
+        setLoading(false);
+        return;
+      }
+    }
+    let authenticated = false;
     try {
       if (!supabase) {
         setError(SUPABASE_CONFIG_ERROR);
@@ -3328,59 +3692,48 @@ function AuthPage({ mode, customer = false }) {
           : await supabase.auth.signUp({
               email: form.email,
               password: form.password,
-              options: { data: { business_name: form.businessName } },
+              options: {
+                data: {
+                  account_type: "professional",
+                  business_name: form.businessName.trim(),
+                },
+              },
             });
       if (result.error) {
-        setError(errorText(result.error));
+        setError(registrationAuthError(result.error) || errorText(result.error));
         return;
       }
-      if (mode === "register" && result.data.user && !customer) {
+      authenticated = Boolean(result.data.user);
+      if (mode === "register" && result.data.user) {
         if (!result.data.session) {
           setError(
-            "Ελέγξτε το email σας για επιβεβαίωση και μετά συνδεθείτε για να δημιουργήσετε τον χώρο σας.",
+            "Ελέγξτε το email σας για επιβεβαίωση. Μετά την επιβεβαίωση, συνδεθείτε για να ολοκληρωθεί η δημιουργία του χώρου σας.",
           );
           return;
         }
-        const baseSlug = slugify(form.businessName);
-        let slug = baseSlug;
-        let suffix = 2;
-        while (true) {
-          const { data: existing, error: lookupError } = await supabase
-            .from("businesses")
-            .select("id")
-            .eq("slug", slug)
-            .maybeSingle();
-          if (lookupError) throw lookupError;
-          if (!existing) break;
-          slug = `${baseSlug}-${suffix}`;
-          suffix += 1;
-        }
-        const { error: businessError } = await supabase
-          .from("businesses")
-          .insert({
-            owner_id: result.data.user.id,
-            name: form.businessName,
-            slug,
-            description: "",
-            address: "",
-            phone: "",
-          });
-        if (businessError) throw businessError;
       }
+      const user = result.data.user;
+      if (
+        !customer && user &&
+        (mode === "register" || user.user_metadata?.account_type === "professional" || user.user_metadata?.business_name)
+      ) await ensureProfessionalBusiness(supabase, user, slugify);
+      onAuthenticated?.();
       navigate(customer ? "/customer" : "/dashboard");
     } catch (requestError) {
       reportCriticalError(requestError, {
         feature: "professional-authentication",
         operation: mode,
       });
-      setError("Δεν ήταν δυνατή η ολοκλήρωση της σύνδεσης. Δοκιμάστε ξανά.");
+      setError(authenticated
+        ? "Η σύνδεση ολοκληρώθηκε, αλλά δεν δημιουργήθηκε ο επαγγελματικός χώρος. Συνδεθείτε ξανά για να επαναλάβετε την προσπάθεια."
+        : "Δεν ήταν δυνατή η ολοκλήρωση της σύνδεσης. Ελέγξτε τα στοιχεία σας και δοκιμάστε ξανά.");
     } finally {
       setLoading(false);
     }
   };
   const authPath = customer ? "/customer-" : "/";
   return (
-    <div className="auth-layout">
+    <div className={`auth-layout${modal ? " home-auth-layout" : ""}`}>
       <div className="auth-aside">
         <div className="auth-brand-row"><Link className="brand light" to="/">
           <span className="brand-mark">B</span>
@@ -3396,11 +3749,11 @@ function AuthPage({ mode, customer = false }) {
             <em>Περισσότερη</em> επιχείρηση.
           </h1>
           <p>
-            Όλα τα ραντεβού, οι πελάτες και η ομάδα σας. Σε ένα όμορφο, απλό
-            workspace.
+            Όλα τα ραντεβού, οι πελάτες και η ομάδα σας, σε έναν όμορφο και
+            εύχρηστο χώρο εργασίας.
           </p>
         </div>
-        <small>© 2025 BookEasy</small>
+        <small>© {new Date().getFullYear()} BookEasy</small>
       </div>
       <div className="auth-form-wrap">
         <form className="auth-form" onSubmit={submit}>
@@ -3463,9 +3816,15 @@ function AuthPage({ mode, customer = false }) {
             {mode === "login"
               ? "Δεν έχετε λογαριασμό;"
               : "Έχετε ήδη λογαριασμό;"}{" "}
-            <Link to={`${authPath}${mode === "login" ? "register" : "login"}`}>
-              {mode === "login" ? "Εγγραφή" : "Σύνδεση"}
-            </Link>
+            {modal ? (
+              <button type="button" className="home-auth-switch" onClick={() => onModeChange(mode === "login" ? "register" : "login")}>
+                {mode === "login" ? "Εγγραφή" : "Σύνδεση"}
+              </button>
+            ) : (
+              <Link to={`${authPath}${mode === "login" ? "register" : "login"}`}>
+                {mode === "login" ? "Εγγραφή" : "Σύνδεση"}
+              </Link>
+            )}
           </small>
         </form>
       </div>
