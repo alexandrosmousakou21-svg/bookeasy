@@ -66,3 +66,199 @@ body {
 #root {
   color: #172B36;
 }
+
+
+/* BOOKEASY HYBRID FUTURE 2100 — DASHBOARD LAYER */
+:root {
+  --hf-cream: #EAE8D8;
+  --hf-pearl: #F1F0E8;
+  --hf-mint: #D9E8D3;
+  --hf-sage: #A8CDB5;
+  --hf-forest: #174D3A;
+  --hf-emerald: #267A55;
+  --hf-teal: #114C5A;
+  --hf-noir: #172B36;
+  --hf-cyan: #66D8C8;
+  --hf-gold: #D8B94C;
+}
+.experience-content .app-shell {
+  color: var(--hf-noir);
+  background:
+    radial-gradient(ellipse at 82% 10%, rgba(168,205,181,.23), transparent 38%),
+    linear-gradient(145deg, #EAE8D8, #F1F0E8 55%, #D9E8D3);
+}
+.experience-content .app-shell .sidebar {
+  background: rgba(241,240,232,.88);
+  border-right: 1px solid rgba(23,77,58,.12);
+  box-shadow: 8px 0 35px rgba(23,43,54,.045);
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
+}
+.experience-content .app-shell .brand-mark,
+.experience-content .app-shell .workspace-logo {
+  background: linear-gradient(145deg, #A8CDB5, #267A55);
+  color: #F1F0E8;
+  box-shadow: 0 7px 20px rgba(38,122,85,.18), inset 0 1px rgba(255,255,255,.5);
+}
+.experience-content .app-shell .brand-text { color: #172B36; }
+.experience-content .app-shell .brand-text span { color: #267A55; }
+.experience-content .app-shell .workspace-switcher {
+  background: rgba(217,232,211,.42);
+  border: 1px solid rgba(23,77,58,.10);
+  border-radius: 16px;
+}
+.experience-content .app-shell .nav-caption,
+.experience-content .app-shell .nav-item { color: #52685C; }
+.experience-content .app-shell .nav-item {
+  border: 1px solid transparent;
+  border-radius: 13px;
+  transition: background .2s ease, color .2s ease, transform .2s ease, border-color .2s ease;
+}
+.experience-content .app-shell .nav-item:hover {
+  color: #174D3A;
+  background: rgba(168,205,181,.25);
+  border-color: rgba(38,122,85,.12);
+  transform: translateX(2px);
+}
+.experience-content .app-shell .nav-item.active {
+  color: #174D3A;
+  background: linear-gradient(105deg, rgba(168,205,181,.45), rgba(217,232,211,.25));
+  border-color: rgba(38,122,85,.17);
+}
+.experience-content .app-shell .nav-item.active::before {
+  background: linear-gradient(180deg, #267A55, #66D8C8);
+  box-shadow: 0 0 13px rgba(38,122,85,.20);
+}
+.experience-content .app-shell .nav-item b {
+  background: #267A55;
+  color: #F1F0E8;
+}
+.experience-content .app-shell .main-content { background: transparent; }
+.experience-content .app-shell .topbar {
+  background: rgba(241,240,232,.76);
+  border-bottom: 1px solid rgba(23,77,58,.10);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+.experience-content .app-shell .breadcrumbs,
+.experience-content .app-shell .connection-dot { color: #52685C; }
+.experience-content .app-shell .connection-dot i {
+  background: #267A55;
+  box-shadow: 0 0 0 4px rgba(38,122,85,.10), 0 0 14px rgba(38,122,85,.25);
+}
+.experience-content .app-shell .content {
+  color: #172B36;
+  background: transparent;
+}
+.experience-content .app-shell .page-header h1 { color: #172B36; }
+.experience-content .app-shell .page-header p,
+.experience-content .app-shell .eyebrow { color: #61766A; }
+.experience-content .app-shell .eyebrow::before {
+  background: linear-gradient(90deg, #267A55, #66D8C8);
+}
+.experience-content .app-shell :is(.panel,.stat-card,.weekly-activity,.empty-state,.calendar-panel,.table-panel,.notification-popover) {
+  color: #172B36;
+  background: linear-gradient(145deg, rgba(250,249,241,.94), rgba(241,240,232,.90));
+  border: 1px solid rgba(23,77,58,.12);
+  border-radius: 20px;
+  box-shadow: 0 12px 34px rgba(23,43,54,.065), inset 0 1px rgba(255,255,255,.8);
+  backdrop-filter: blur(16px);
+}
+.experience-content .app-shell .stat-card {
+  position: relative;
+  overflow: hidden;
+  transition: transform .22s ease, box-shadow .22s ease, border-color .22s ease;
+}
+.experience-content .app-shell .stat-card::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: linear-gradient(180deg, #267A55, #66D8C8);
+  opacity: .8;
+}
+.experience-content .app-shell .stat-icon {
+  background: rgba(168,205,181,.34);
+  color: #174D3A;
+  border: 1px solid rgba(38,122,85,.10);
+}
+.experience-content .app-shell .stat-card :is(span,small) { color: #61766A; }
+.experience-content .app-shell .stat-card strong,
+.experience-content .app-shell .stat-card h3 { color: #172B36; }
+.experience-content .app-shell .panel-heading h2 { color: #174D3A; }
+.experience-content .app-shell :is(.primary-button,.quick-action) {
+  background: linear-gradient(125deg, #174D3A, #267A55);
+  color: #F1F0E8;
+  border: 1px solid rgba(102,216,200,.24);
+  box-shadow: 0 6px 18px rgba(23,77,58,.16);
+  transition: transform .18s ease, box-shadow .18s ease, filter .18s ease;
+}
+.experience-content .app-shell :is(.outline-button,.mini-action,.icon-button) {
+  color: #174D3A;
+  border-color: rgba(23,77,58,.16);
+  background: rgba(241,240,232,.82);
+  transition: transform .18s ease, background .18s ease, box-shadow .18s ease;
+}
+.experience-content .app-shell :is(.primary-button,.quick-action,.outline-button,.mini-action,.icon-button,.tab-item):active {
+  transform: scale(.975);
+}
+@media (hover:hover) and (pointer:fine) {
+  .experience-content .app-shell .stat-card:hover {
+    transform: translateY(-3px);
+    border-color: rgba(38,122,85,.25);
+    box-shadow: 0 18px 42px rgba(23,77,58,.10), 0 0 0 1px rgba(102,216,200,.10);
+  }
+  .experience-content .app-shell :is(.primary-button,.quick-action):hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(23,77,58,.23);
+    filter: saturate(1.08);
+  }
+  .experience-content .app-shell :is(.outline-button,.mini-action,.icon-button):hover {
+    background: rgba(217,232,211,.58);
+    transform: translateY(-1px);
+  }
+}
+.experience-content .app-shell .tab-bar {
+  background: rgba(241,240,232,.94);
+  border: 1px solid rgba(23,77,58,.13);
+  box-shadow: 0 12px 32px rgba(23,43,54,.12);
+  backdrop-filter: blur(20px);
+}
+.experience-content .app-shell .tab-item { color: #61766A; }
+.experience-content .app-shell .tab-item.active {
+  color: #174D3A;
+  background: rgba(168,205,181,.42);
+}
+.experience-content .app-shell :is(input,select,textarea) {
+  color: #172B36;
+  background: rgba(250,249,241,.92);
+  border-color: rgba(23,77,58,.17);
+}
+.experience-content .app-shell :is(input,select,textarea):focus {
+  border-color: #267A55;
+  box-shadow: 0 0 0 3px rgba(102,216,200,.16);
+  outline: none;
+}
+.experience-content .app-shell :is(.notification-popover,.notification-item) {
+  background: rgba(241,240,232,.97);
+  color: #172B36;
+  border-color: rgba(23,77,58,.14);
+}
+@media (max-width: 800px) {
+  .experience-content .app-shell .sidebar { background: rgba(241,240,232,.97); }
+  .experience-content .app-shell .tab-bar {
+    background: rgba(241,240,232,.95);
+    border-radius: 19px;
+  }
+  .experience-content .app-shell .content { padding-left: 15px; padding-right: 15px; }
+  .experience-content .app-shell .page-header { gap: 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .experience-content .app-shell *,
+  .experience-content .app-shell *::before,
+  .experience-content .app-shell *::after {
+    scroll-behavior: auto !important;
+    animation-duration: .01ms !important;
+    transition-duration: .01ms !important;
+  }
+}
