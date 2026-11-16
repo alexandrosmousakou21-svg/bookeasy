@@ -1,0 +1,68 @@
+:root {
+  --hf-pearl: #F1F6F4;
+  --hf-cream: #FAF8F1;
+  --hf-mint: #D9E8E3;
+  --hf-emerald: #114C5A;
+  --hf-noir: #172B36;
+  --hf-cyan: #66E6DC;
+  --hf-gold: #FFC801;
+  --hf-orange: #FF9932;
+}
+
+body {
+  background: var(--hf-cream);
+}
+
+.hybrid-future {
+  color: var(--hf-noir);
+  background:
+    radial-gradient(ellipse at 15% 10%, rgba(217,232,227,.8), transparent 38%),
+    radial-gradient(ellipse at 85% 20%, rgba(102,230,220,.15), transparent 35%),
+    var(--hf-cream);
+  min-height: 100vh;
+}
+
+.hybrid-future button {
+  transition: transform .25s ease, box-shadow .25s ease;
+}
+
+.hybrid-future button:hover {
+  transform: translateY(-2px);
+}
+
+.hybrid-future .hf-glass {
+  background: rgba(255,255,255,.62);
+  border: 1px solid rgba(255,255,255,.85);
+  backdrop-filter: blur(24px);
+  box-shadow: 0 20px 70px rgba(23,43,54,.08);
+  border-radius: 28px;
+}
+
+.hybrid-future .hf-accent {
+  color: var(--hf-emerald);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hybrid-future *,
+  .hybrid-future *::before,
+  .hybrid-future *::after {
+    animation-duration: .01ms !important;
+    transition-duration: .01ms !important;
+  }
+}
+
+html, body, #root {
+  min-height: 100%;
+  background: #FAF8F1 !important;
+}
+
+body {
+  background:
+    radial-gradient(ellipse at 15% 10%, #D9E8E3 0%, transparent 42%),
+    radial-gradient(ellipse at 85% 20%, rgba(102,230,220,.22), transparent 38%),
+    #FAF8F1 !important;
+}
+
+#root {
+  color: #172B36;
+}

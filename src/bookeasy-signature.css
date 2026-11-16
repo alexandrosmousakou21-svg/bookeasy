@@ -1,0 +1,158 @@
+
+/* BOOKEASY — SIGNATURE EDITORIAL DESIGN */
+
+:root {
+  --signature-paper: #F7F8F5;
+  --signature-mint: #CBE9D8;
+  --signature-emerald: #168B68;
+  --signature-forest: #173B35;
+  --signature-ease: cubic-bezier(.2,.8,.2,1);
+}
+
+.home-layout {
+  position: relative;
+  isolation: isolate;
+  overflow: clip;
+  background: var(--signature-paper);
+}
+
+.home-layout::before,
+.home-layout::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  pointer-events: none;
+  border-radius: 50%;
+  filter: blur(75px);
+  opacity: .45;
+}
+
+.home-layout::before {
+  width: 360px;
+  height: 360px;
+  top: 4%;
+  right: -150px;
+  background: var(--signature-mint);
+  animation: signatureFloat 15s ease-in-out infinite;
+}
+
+.home-layout::after {
+  width: 300px;
+  height: 300px;
+  bottom: 12%;
+  left: -160px;
+  background: rgba(22,139,104,.13);
+  animation: signatureFloat 19s ease-in-out infinite reverse;
+}
+
+.home-hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-radius: clamp(20px, 3vw, 38px);
+}
+
+.home-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 80% 15%, rgba(203,233,216,.55), transparent 42%),
+    linear-gradient(135deg, rgba(255,255,255,.55), transparent 70%);
+}
+
+.home-hero,
+.home-categories,
+.home-how,
+.home-clients,
+.home-professionals,
+.home-about,
+.home-support,
+.home-pricing {
+  transition:
+    border-color 500ms ease,
+    box-shadow 500ms ease,
+    background 500ms ease;
+}
+
+.home-layout h1,
+.home-hero h1 {
+  color: var(--signature-forest);
+  letter-spacing: -.055em;
+  text-wrap: balance;
+}
+
+.home-layout h2,
+.home-layout h3 {
+  color: var(--signature-forest);
+  letter-spacing: -.035em;
+  text-wrap: balance;
+}
+
+.home-layout button,
+.home-layout a[role="button"],
+.home-layout .btn,
+.home-layout .button {
+  border-radius: 14px;
+  transition:
+    transform 280ms var(--signature-ease),
+    box-shadow 280ms ease,
+    filter 280ms ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .home-layout button:not(:disabled):hover,
+  .home-layout a[role="button"]:hover,
+  .home-layout .btn:hover,
+  .home-layout .button:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 28px rgba(22,139,104,.18);
+  }
+
+  .home-layout button:not(:disabled):active,
+  .home-layout .btn:active,
+  .home-layout .button:active {
+    transform: translateY(1px) scale(.97);
+  }
+
+  .home-categories > *,
+  .home-professionals > *,
+  .home-pricing > * {
+    transition:
+      transform 350ms var(--signature-ease),
+      box-shadow 350ms ease;
+  }
+
+  .home-categories > *:hover,
+  .home-professionals > *:hover,
+  .home-pricing > *:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 18px 40px rgba(23,59,53,.10);
+  }
+}
+
+.home-footer {
+  border-top: 1px solid rgba(23,59,53,.10);
+}
+
+@keyframes signatureFloat {
+  0%, 100% { transform: translate3d(0,0,0) scale(1); }
+  50% { transform: translate3d(-22px,18px,0) scale(1.08); }
+}
+
+@media (max-width: 700px) {
+  .home-layout::before,
+  .home-layout::after {
+    filter: blur(55px);
+    opacity: .28;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-layout::before,
+  .home-layout::after {
+    animation: none !important;
+  }
+}

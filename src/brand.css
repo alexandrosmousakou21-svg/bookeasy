@@ -5873,3 +5873,113 @@ body {
     animation: none !important;
   }
 }
+
+
+
+/* BOOKEASY PREMIUM LIGHT 2026 */
+.experience-content {
+  --be-ivory: #F8F5F0;
+  --be-pearl: #FFFFFF;
+  --be-lilac: #E9DFF1;
+  --be-lilac-deep: #9A80AD;
+  --be-sage: #DCE8DC;
+  --be-sage-deep: #718B73;
+  --be-ink: #34303B;
+  --be-muted: #827C87;
+  --be-border: rgba(117, 99, 129, .13);
+  --be-shadow: 0 12px 40px rgba(75, 57, 83, .075);
+}
+
+.experience-content .home-layout {
+  --home-bg: #F8F5F0;
+  --home-surface: #FFFFFF;
+  --home-violet: #987DAA;
+  --home-violet-deep: #776184;
+  --home-lavender: #E9DFF1;
+  --home-text: #34303B;
+  --home-muted: #827C87;
+  color: var(--home-text);
+  background: transparent !important;
+}
+
+.experience-content .home-layout .auth-aside h1 {
+  color: #34303B;
+  letter-spacing: -0.055em;
+}
+
+.experience-content .home-layout .auth-aside p,
+.experience-content .home-layout .auth-aside > small {
+  color: #77717D;
+}
+
+.experience-content .home-layout .auth-form :is(h2, .eyebrow) {
+  color: #34303B;
+}
+
+.experience-content .home-layout .auth-form p {
+  color: #827C87;
+}
+
+.experience-content .home-layout .auth-form {
+  color: #34303B;
+}
+
+.experience-content .home-layout .auth-form .full {
+  border-radius: 15px;
+  box-shadow: 0 8px 22px rgba(117, 91, 135, .15);
+}
+
+.experience-content .home-layout .brand {
+  color: #51465B;
+}
+
+.experience-content .home-layout .brand-mark {
+  border-radius: 13px;
+  box-shadow: 0 5px 18px rgba(117, 91, 135, .15);
+}
+
+.experience-content :is(.customer-page .customer-hero, .weekly-activity) {
+  background: rgba(255,255,255,.82);
+  border: 1px solid var(--be-border);
+  box-shadow: var(--be-shadow);
+  backdrop-filter: blur(16px);
+}
+
+.experience-content .app-shell .content,
+.experience-content .app-shell .main-content {
+  background: transparent;
+}
+
+.experience-content :is(.stat-card, .booking-card) {
+  border-color: var(--be-border);
+  box-shadow: var(--be-shadow);
+}
+
+.experience-content :is(.stat-card, .booking-card) {
+  border-radius: 18px;
+}
+
+.experience-content :is(button, .home-primary-cta) {
+  transition: transform .25s ease, box-shadow .25s ease;
+}
+
+.experience-content :is(button, .home-primary-cta):focus-visible {
+  outline: 3px solid #BBA4CE;
+  outline-offset: 3px;
+}
+
+@media (max-width: 700px) {
+  .experience-content .home-layout {
+    padding: 22px 20px;
+  }
+
+  .experience-content .home-layout .auth-aside h1 {
+    font-size: clamp(39px, 10vw, 54px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .experience-content :is(button, .home-primary-cta) {
+    transition: none;
+  }
+}

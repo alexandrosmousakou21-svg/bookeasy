@@ -1,0 +1,127 @@
+
+/* BOOKEASY PREMIUM LIVE THEME */
+:root {
+  --be-porcelain: #F7F8F5;
+  --be-mint: #CBE9D8;
+  --be-emerald: #168B68;
+  --be-forest: #173B35;
+
+  --be-background: var(--be-porcelain);
+  --be-surface: #FFFFFF;
+  --be-primary: var(--be-emerald);
+  --be-text: var(--be-forest);
+  --be-radius: 18px;
+  --be-shadow: 0 12px 36px rgba(23, 59, 53, .09);
+  --be-transition: 260ms cubic-bezier(.2,.8,.2,1);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background:
+    radial-gradient(ellipse at 8% 5%, rgba(203,233,216,.55), transparent 35%),
+    radial-gradient(ellipse at 92% 90%, rgba(22,139,104,.07), transparent 38%),
+    var(--be-porcelain);
+  color: var(--be-forest);
+}
+
+button,
+[role="button"],
+.btn,
+.button {
+  transition:
+    transform var(--be-transition),
+    box-shadow var(--be-transition),
+    background var(--be-transition),
+    filter var(--be-transition);
+}
+
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]),
+.btn,
+.button {
+  transform-style: preserve-3d;
+}
+
+@media (hover: hover) {
+  button:not(:disabled):hover,
+  [role="button"]:not([aria-disabled="true"]):hover,
+  .btn:hover,
+  .button:hover {
+    transform: translateY(-2px);
+    filter: brightness(1.035);
+    box-shadow: 0 9px 22px rgba(22,139,104,.17);
+  }
+
+  button:not(:disabled):active,
+  [role="button"]:not([aria-disabled="true"]):active,
+  .btn:active,
+  .button:active {
+    transform: translateY(1px) scale(.975);
+    box-shadow: 0 2px 7px rgba(23,59,53,.12);
+  }
+}
+
+button:focus-visible,
+[role="button"]:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid rgba(22,139,104,.38);
+  outline-offset: 3px;
+}
+
+.card,
+.dashboard-card,
+.stat-card,
+.service-card,
+.booking-card,
+.professional-card,
+.glass-card {
+  border-color: rgba(23,59,53,.09);
+  border-radius: var(--be-radius);
+  box-shadow: var(--be-shadow);
+  transition:
+    transform 350ms cubic-bezier(.2,.8,.2,1),
+    box-shadow 350ms ease,
+    border-color 350ms ease;
+}
+
+@media (hover: hover) {
+  .card:hover,
+  .dashboard-card:hover,
+  .stat-card:hover,
+  .service-card:hover,
+  .booking-card:hover,
+  .professional-card:hover,
+  .glass-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 18px 42px rgba(23,59,53,.13);
+    border-color: rgba(22,139,104,.25);
+  }
+}
+
+input,
+select,
+textarea {
+  transition: border-color var(--be-transition), box-shadow var(--be-transition);
+}
+
+::selection {
+  background: var(--be-mint);
+  color: var(--be-forest);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}

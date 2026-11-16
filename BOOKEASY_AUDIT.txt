@@ -1,0 +1,111 @@
+BOOKEASY PROJECT AUDIT
+DATE: Mon Nov 16 16:29:57 UTC 2026
+
+=== BUILD ===
+
+> bookeasy@1.0.0 build
+> vite build
+
+vite v6.4.5 building for production...
+transforming...
+✓ 1649 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                        13.12 kB │ gzip:   3.47 kB
+dist/assets/index-BrwtgJMH.css        158.01 kB │ gzip:  27.64 kB
+dist/assets/web-CuwJRR7L.js             0.90 kB │ gzip:   0.43 kB
+dist/assets/customer-BOVKMX7X.js       46.74 kB │ gzip:  14.04 kB
+dist/assets/index-B7m3n7os.js         140.60 kB │ gzip:  39.52 kB
+dist/assets/react-DpEeMOsT.js         165.15 kB │ gzip:  54.06 kB
+dist/assets/supabase-D_iOwayF.js      227.02 kB │ gzip:  58.86 kB
+dist/assets/ambientScene-DzJxuIQQ.js  527.38 kB │ gzip: 131.52 kB
+✓ built in 4.80s
+
+=== PACKAGE SCRIPTS ===
+{
+  "dev": "vite",
+  "build": "vite build",
+  "preview": "vite preview",
+  "cap:sync": "npm run build && cap sync",
+  "cap:android": "cap open android",
+  "cap:ios": "cap open ios"
+}
+
+=== SOURCE FILES ===
+src/styles.css
+src/customer.css
+src/design-system.css
+src/lib/registration.js
+src/lib/supabase.js
+src/lib/errorMessages.js
+src/lib/errorReporting.js
+src/lib/returnPath.js
+src/lib/functions.js
+src/lib/directorySearch.js
+src/brand.css
+src/WeeklyActivity.jsx
+src/ambientScene.js
+src/App.jsx
+src/functional.css
+src/ambient.css
+src/customer.jsx
+src/ui.jsx
+src/AppointmentRescheduleDialog.jsx
+src/AmbientExperience.jsx
+src/ErrorBoundary.jsx
+src/main.jsx
+
+=== TEST FILES ===
+tests/appointment-rls.test.sql
+tests/error-messages.test.js
+tests/directory-search.test.js
+tests/db/12_lilac_brand.sql
+tests/db/13_plus_directory_visibility.sql
+tests/db/00_supabase_stubs.sql
+tests/db/11_push_retry.sql
+tests/db/15_working_hours_exceptions.sql
+tests/db/01_after_migrations.sql
+tests/db/10_booking_integrity.sql
+tests/db/14_appointment_rescheduling.sql
+tests/registration.test.js
+tests/run-db-tests.sh
+tests/ai-assistant.test.js
+tests/return-path.test.js
+tests/stripe-checkout.test.js
+
+=== SUPABASE ===
+supabase/storage.sql
+supabase/config.toml
+supabase/schema.sql
+supabase/.temp/cli-latest
+supabase/functions/_shared/stripeCheckout.ts
+supabase/functions/_shared/professionalAi.ts
+supabase/functions/customer-support/index.ts
+supabase/functions/send-professional-push/index.ts
+supabase/functions/ai-assistant/index.ts
+supabase/functions/customer-assistant/index.ts
+supabase/functions/create-checkout/index.ts
+supabase/functions/stripe-webhook/index.ts
+supabase/functions/manage-subscription/index.ts
+supabase/migrations/20261003_stripe_subscriptions.sql
+supabase/migrations/20261002_support_reliability.sql
+supabase/migrations/20261108000000_restrict_customer_appointment_updates.sql
+supabase/migrations/20261111000002_working_hours_breaks_exceptions.sql
+supabase/migrations/20261005_professional_push_registration.sql
+supabase/migrations/20261108000001_fix_appointment_notification_events.sql
+supabase/migrations/20261011000000_notifications_foundation.sql
+supabase/migrations/20261111000000_lilac_business_accent_default.sql
+supabase/migrations/20261109000000_booking_integrity_atomic_saves.sql
+supabase/migrations/20261109000001_push_delivery_retry.sql
+supabase/migrations/20261004_professional_notifications.sql
+supabase/migrations/20261111000001_appointment_rescheduling.sql
+
+=== VERCEL ===
+-rw-rw-rw-  1 codespace codespace   96 Sep 29 22:27 vercel.json
+
+.vercel:
+total 16
+drwxrwxrwx+  2 codespace codespace 4096 Oct  3 01:18 .
+drwxrwxrwx+ 13 codespace root      4096 Nov 16 16:29 ..
+-rw-rw-rw-   1 codespace codespace  520 Oct  3 01:18 README.txt
+-rw-rw-rw-   1 codespace codespace  207 Oct  3 01:18 repo.json

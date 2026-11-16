@@ -383,3 +383,51 @@
   position: relative;
   z-index: 1;
 }
+
+
+
+/* BOOKEASY PREMIUM AMBIENT LIGHT 2026 */
+.ambient-layer {
+  background: #F8F5F0;
+}
+
+.ambient-layer[data-scene="home"] {
+  background:
+    radial-gradient(ellipse at 12% 18%, rgba(226, 211, 239, .42), transparent 42%),
+    radial-gradient(ellipse at 85% 75%, rgba(207, 224, 207, .48), transparent 44%),
+    linear-gradient(135deg, #FBF9F5, #F5F0F7 55%, #F8F5F0) !important;
+}
+
+.ambient-layer canvas {
+  opacity: .86;
+}
+
+.experience-content .home-layout {
+  background: transparent !important;
+}
+
+.experience-content .home-layout .auth-aside h1 {
+  text-shadow: 0 2px 24px rgba(255,255,255,.35);
+}
+
+.experience-content .home-layout .auth-form {
+  backdrop-filter: none;
+}
+
+.experience-content .customer-page .customer-hero {
+  background: rgba(255,255,255,.76);
+  border: 1px solid rgba(155, 130, 169, .13);
+  backdrop-filter: blur(18px);
+}
+
+@media (max-width: 700px) {
+  .ambient-layer canvas {
+    opacity: .65;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ambient-layer canvas {
+    transition: none;
+  }
+}

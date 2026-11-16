@@ -59,3 +59,4 @@ if ('serviceWorker' in navigator) {
     )
   })
 }
+import "./hybrid-future.css";

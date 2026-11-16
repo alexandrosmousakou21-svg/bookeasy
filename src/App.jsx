@@ -1,3 +1,4 @@
+import './premium-theme.css'
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import {
   Link,
